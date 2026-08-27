@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #f4efe6;
+  --cream-dim: #d9d0c3;
+  --ink: #1c2a24;
+  --muted: #6b6258;
+  --line: #e4d9c8;
+  --gold: #b08d57;
+  --stone: #8a7968;
+}
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-sans), sans-serif;
+}
