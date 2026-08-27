@@ -20,6 +20,9 @@ export function PropertySearch() {
         <h2 className="font-display text-center text-3xl text-white md:text-4xl">
           Find your perfect home
         </h2>
+        <p className="mt-3 text-center text-sm text-[color:var(--muted)]">
+          Enter a place or postcode to search
+        </p>
 
         <div className="mt-8 flex justify-center gap-2">
           <button
@@ -55,7 +58,7 @@ export function PropertySearch() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Bradford"
+              placeholder="e.g. Bradford or BD8"
               className="w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none placeholder:text-[color:var(--muted)]/60 focus:border-[color:var(--gold)]"
             />
           </label>

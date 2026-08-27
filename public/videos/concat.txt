@@ -1,0 +1,11 @@
+file '../images/hero-luxury-exterior.png'
+duration 5
+file '../images/hero-luxury-interior.png'
+duration 5
+file '../images/hero-aerial-estate.png'
+duration 5
+file '../images/hero-penthouse.png'
+duration 5
+file '../images/hero-kitchen.png'
+duration 5
+file '../images/hero-luxury-exterior.png'

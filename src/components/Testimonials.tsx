@@ -4,7 +4,7 @@ export function Testimonials() {
   const featured = testimonials[0];
 
   return (
-    <section className="border-t border-[color:var(--line)] px-6 py-24 lg:px-10">
+    <section className="border-t border-[color:var(--line)] px-6 py-24 lg:px-10" id="testimonials">
       <div className="mx-auto max-w-4xl text-center">
         <blockquote className="font-display text-2xl leading-relaxed text-white md:text-3xl lg:text-4xl">
           &ldquo;{featured.quote}&rdquo;

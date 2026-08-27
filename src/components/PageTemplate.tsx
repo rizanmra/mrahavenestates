@@ -1,0 +1,88 @@
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+export function PageImageHero({
+  title,
+  subtitle,
+  image,
+}: {
+  title: string;
+  subtitle?: string;
+  image: string;
+}) {
+  return (
+    <section className="relative min-h-[40vh] overflow-hidden pt-28">
+      <Image
+        src={image}
+        alt=""
+        fill
+        priority
+        className="object-cover"
+        sizes="100vw"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-[color:var(--navy)]/40" />
+      <div className="relative z-10 mx-auto max-w-4xl px-6 py-16 text-center lg:px-10">
+        <h1 className="font-display text-5xl text-white md:text-6xl">{title}</h1>
+        {subtitle ? (
+          <p className="mt-6 text-lg text-white/85">{subtitle}</p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function PageHero({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <section className="border-b border-[color:var(--line)] bg-[color:var(--navy-light)] px-6 py-20 pt-36 lg:px-10">
+      <div className="mx-auto max-w-4xl text-center">
+        <h1 className="font-display text-5xl text-white md:text-6xl">{title}</h1>
+        {subtitle ? (
+          <p className="mt-6 text-lg text-[color:var(--muted)]">{subtitle}</p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function InfoBody({
+  children,
+  cta,
+  bullets,
+}: {
+  children: ReactNode;
+  cta?: { label: string; href: string };
+  bullets?: string[];
+}) {
+  return (
+    <section className="px-6 py-16 lg:px-10">
+      <div className="mx-auto max-w-3xl space-y-6 text-lg leading-relaxed text-[color:var(--muted)]">
+        {children}
+        {bullets && bullets.length > 0 ? (
+          <ul className="space-y-3 pt-2">
+            {bullets.map((item) => (
+              <li key={item} className="flex gap-3">
+                <span
+                  className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--gold)]"
+                  aria-hidden
+                />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {cta ? (
+          <Link href={cta.href} className="btn-gold mt-8 inline-block px-8 py-3 text-sm uppercase">
+            {cta.label}
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  );
+}

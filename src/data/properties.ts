@@ -1,3 +1,5 @@
+import { imageLibrary } from "@/data/hero-images";
+
 export type PropertyType = "sale" | "rent";
 
 export type Property = {
@@ -27,8 +29,7 @@ export const properties: Property[] = [
     status: "For Sale",
     summary:
       "A striking contemporary home with floor-to-ceiling glazing, landscaped gardens, and open-plan living across two levels.",
-    image:
-      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&q=85",
+    image: imageLibrary.heroExterior,
   },
   {
     slug: "cedar-court-family-home",
@@ -42,8 +43,7 @@ export const properties: Property[] = [
     status: "For Sale",
     summary:
       "Detached family residence with a south-facing garden, modern kitchen, and two reception rooms in a quiet cul-de-sac.",
-    image:
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=85",
+    image: imageLibrary.heroInterior,
   },
   {
     slug: "city-centre-apartment",
@@ -57,8 +57,7 @@ export const properties: Property[] = [
     status: "For Rent",
     summary:
       "Luxury apartment with balcony views, allocated parking, and concierge access in the heart of the city.",
-    image:
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=85",
+    image: imageLibrary.heroPenthouse,
   },
   {
     slug: "victorian-terrace",
@@ -72,8 +71,7 @@ export const properties: Property[] = [
     status: "For Sale",
     summary:
       "Character-filled terrace with original features, a renovated kitchen, and walking distance to the town centre.",
-    image:
-      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=85",
+    image: imageLibrary.pageSales,
   },
   {
     slug: "executive-flat",
@@ -87,8 +85,7 @@ export const properties: Property[] = [
     status: "For Rent",
     summary:
       "High-specification apartment with river views, underfloor heating, and secure underground parking.",
-    image:
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=85",
+    image: imageLibrary.pageLettings,
   },
   {
     slug: "detached-bungalow",
@@ -102,8 +99,7 @@ export const properties: Property[] = [
     status: "For Sale",
     summary:
       "Single-level living with a wraparound garden, double garage, and scope to extend subject to planning.",
-    image:
-      "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800&q=85",
+    image: imageLibrary.heroAerial,
   },
 ];
 

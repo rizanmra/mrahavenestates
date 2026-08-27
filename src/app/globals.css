@@ -67,7 +67,95 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.btn-outline-gold:hover {
-  background-color: var(--gold);
-  color: var(--navy);
+@keyframes hero-interior-drift {
+  0% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.1) translate3d(0, -1.5%, 0);
+  }
+}
+
+.hero-interior-drift {
+  animation: hero-interior-drift 18s ease-in-out infinite alternate;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Gold shimmer sweeping across the headline */
+@keyframes hero-shimmer-sweep {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.hero-shimmer {
+  color: #ffffff;
+  background: linear-gradient(
+    100deg,
+    #ffffff 30%,
+    #e8c896 45%,
+    #c4a47c 50%,
+    #e8c896 55%,
+    #ffffff 70%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hero-shimmer-sweep 5s linear infinite;
+}
+
+.hero-vignette {
+  background: radial-gradient(
+    ellipse at center 42%,
+    transparent 50%,
+    rgba(7, 21, 37, 0.45) 100%
+  );
+}
+
+.hero-video-bg {
+  transform: scale(1.04) translateZ(0);
+  animation: hero-cinematic-drift 36s ease-in-out infinite alternate;
+  filter: contrast(1.05) saturate(1.08) brightness(1.03);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@keyframes hero-cinematic-drift {
+  0% {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.07) translate3d(0, -0.8%, 0);
+  }
+}
+
+@keyframes hero-zoom-in {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes hero-zoom-out {
+  0% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-hero-zoom-in {
+  animation: hero-zoom-in 4.5s ease-out forwards;
+}
+
+.animate-hero-zoom-out {
+  animation: hero-zoom-out 4.5s ease-out forwards;
 }

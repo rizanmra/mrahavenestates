@@ -1,3 +1,5 @@
+import { siteImages } from "@/data/hero-images";
+
 export const site = {
   name: "MRA Haven Estates",
   tagline: "Discover Your Dream Home",
@@ -28,19 +30,21 @@ export const navLinks = [
 export const services = [
   {
     title: "Sales",
-    price: "£1",
+    price: "From £1",
     description:
       "Expert guidance from valuation to completion. We market your home with premium photography and targeted reach.",
     href: "/sales",
     cta: "Book Now",
+    image: siteImages.sales,
   },
   {
     title: "Lettings",
-    price: "£100",
+    price: "From £100",
     description:
       "Landlord and tenant services across Bradford and West Yorkshire. Managed lettings with full compliance.",
     href: "/lettings",
     cta: "Book Now",
+    image: siteImages.lettings,
   },
   {
     title: "Removal Services",
@@ -49,6 +53,7 @@ export const services = [
       "Licensed removals with professional packing. From studio flats to full family relocations.",
     href: "/removal-services",
     cta: "Book Now",
+    image: siteImages.removals,
   },
 ];
 

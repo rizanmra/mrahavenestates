@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useState } from "react";
+import { siteImages } from "@/data/hero-images";
 
 export default function FreeValuationForm() {
   const [sent, setSent] = useState(false);
@@ -12,12 +14,26 @@ export default function FreeValuationForm() {
 
   return (
     <div className="pt-28">
-      <section className="px-6 py-16 lg:px-10">
-        <div className="mx-auto max-w-2xl">
+      <section className="relative h-[36vh] min-h-[280px] overflow-hidden">
+        <Image
+          src={siteImages.valuation}
+          alt=""
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-[color:var(--navy)]/40" />
+        <div className="relative z-10 flex h-full items-center justify-center px-6">
           <h1 className="font-display text-center text-5xl text-white md:text-6xl">
             Free Valuation
           </h1>
-          <p className="mt-6 text-center text-lg text-[color:var(--muted)]">
+        </div>
+      </section>
+
+      <section className="px-6 py-16 lg:px-10">
+        <div className="mx-auto max-w-2xl">
+          <p className="text-center text-lg text-[color:var(--muted)]">
             Find out what your property is worth. No obligation, no pressure —
             just expert local advice.
           </p>
@@ -75,18 +91,11 @@ export default function FreeValuationForm() {
                   className="mt-2 w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none focus:border-[color:var(--gold)]"
                 />
               </label>
-              <label className="block">
-                <span className="text-sm text-white">Additional details</span>
-                <textarea
-                  rows={4}
-                  className="mt-2 w-full border border-[color:var(--line)] bg-transparent p-3 text-white outline-none focus:border-[color:var(--gold)]"
-                />
-              </label>
               <button
                 type="submit"
                 className="btn-gold w-full py-4 text-sm font-medium uppercase md:w-auto md:px-12"
               >
-                Book valuation
+                Request valuation
               </button>
             </form>
           )}

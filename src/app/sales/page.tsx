@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { siteImages } from "@/data/hero-images";
 
 export const metadata: Metadata = {
   title: "Sales",
@@ -13,14 +14,14 @@ export default function SalesPage() {
     <div className="pt-28">
       <section className="relative h-[50vh] min-h-[400px]">
         <Image
-          src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=85"
+          src={siteImages.sales}
           alt="Property for sale"
           fill
           className="object-cover"
           priority
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-[color:var(--navy)]/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/60 to-[color:var(--navy)]/30" />
         <div className="relative z-10 flex h-full items-center justify-center px-6">
           <h1 className="font-display text-center text-5xl text-white md:text-7xl">
             Sales

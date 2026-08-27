@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
 import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { MainNav } from "@/components/MainNav";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${sans.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-[color:var(--navy)] text-white">
-        <Header />
+        <MainNav />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>
