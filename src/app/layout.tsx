@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: "%s | MRA Haven Estates",
   },
   description:
-    "Private homes and estates. A custom website for MRA Haven Estates.",
+    "Sales, lettings, removals and free valuations across Bradford and West Yorkshire.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${display.variable} ${sans.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[color:var(--cream)] text-[color:var(--ink)]">
+      <body className="flex min-h-full flex-col bg-[color:var(--navy)] text-white">
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

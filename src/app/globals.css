@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #f4efe6;
-  --cream-dim: #d9d0c3;
-  --ink: #1c2a24;
-  --muted: #6b6258;
-  --line: #e4d9c8;
-  --gold: #b08d57;
-  --stone: #8a7968;
+  --navy: #0b1e33;
+  --navy-light: #142a45;
+  --navy-deep: #071525;
+  --gold: #c4a47c;
+  --gold-hover: #d4b48c;
+  --white: #ffffff;
+  --muted: #a8b4c4;
+  --line: rgba(196, 164, 124, 0.35);
 }
 
 @theme inline {
-  --color-cream: var(--cream);
-  --color-ink: var(--ink);
+  --color-navy: var(--navy);
+  --color-gold: var(--gold);
 }
 
 * {
@@ -24,7 +25,49 @@ html {
 }
 
 body {
-  background: var(--cream);
-  color: var(--ink);
+  background: var(--navy);
+  color: var(--white);
   font-family: var(--font-sans), sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.gold-line {
+  height: 1px;
+  background: var(--line);
+}
+
+.gold-border {
+  border: 1px solid var(--gold);
+}
+
+.text-gold {
+  color: var(--gold);
+}
+
+.bg-gold {
+  background-color: var(--gold);
+}
+
+.btn-gold {
+  background-color: var(--gold);
+  color: var(--navy);
+  transition: background-color 0.2s ease;
+}
+
+.btn-gold:hover {
+  background-color: var(--gold-hover);
+}
+
+.btn-outline-gold {
+  border: 1px solid var(--gold);
+  color: var(--white);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-outline-gold:hover {
+  background-color: var(--gold);
+  color: var(--navy);
 }
