@@ -149,6 +149,74 @@ export const mainNav: NavItem[] = [
     ],
   },
   {
+    label: "Mortgages",
+    href: "/mortgages",
+    highlight: {
+      label: "Speak to an Advisor",
+      href: "/contact",
+    },
+    columns: [
+      {
+        title: "Mortgage Services",
+        links: [
+          { label: "Mortgage Advice", href: "/mortgages" },
+          { label: "Buy to Let Mortgages", href: "/mortgages/buy-to-let" },
+          { label: "First-Time Buyers", href: "/buy" },
+        ],
+      },
+      {
+        title: "Buying & Selling",
+        links: [
+          { label: "Buying a Property", href: "/buy" },
+          { label: "Selling Your Property", href: "/sell" },
+          { label: "Free Valuation", href: "/free-valuation" },
+        ],
+      },
+      {
+        title: "Useful Information",
+        links: [
+          { label: "Stamp Duty Calculator", href: "/stamp-duty" },
+          { label: "Area Guides", href: "/area-guides" },
+          { label: "Contact Us", href: "/contact" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Conveyancing",
+    href: "/conveyancing",
+    highlight: {
+      label: "Get a Conveyancing Quote",
+      href: "/contact",
+    },
+    columns: [
+      {
+        title: "Conveyancing Services",
+        links: [
+          { label: "Conveyancing / Solicitors", href: "/conveyancing" },
+          { label: "Buying a Property", href: "/buy" },
+          { label: "Selling Your Property", href: "/sell" },
+        ],
+      },
+      {
+        title: "Related Services",
+        links: [
+          { label: "Mortgages", href: "/mortgages" },
+          { label: "Buy at Auction", href: "/buy/auction" },
+          { label: "Sell at Auction", href: "/sell/auction" },
+        ],
+      },
+      {
+        title: "Useful Information",
+        links: [
+          { label: "Stamp Duty Calculator", href: "/stamp-duty" },
+          { label: "Area Guides", href: "/area-guides" },
+          { label: "Contact Us", href: "/contact" },
+        ],
+      },
+    ],
+  },
+  {
     label: "About",
     href: "/about",
     highlight: {

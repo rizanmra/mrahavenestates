@@ -111,13 +111,18 @@ export function MainNav() {
             <div key={item.label} className="group relative">
               <Link
                 href={item.href}
-                className={`text-sm ${
+                className={`inline-flex items-center gap-1 text-sm ${
                   isActive(item)
                     ? "text-[color:var(--gold)]"
                     : "text-white hover:text-[color:var(--gold)]"
                 }`}
               >
                 {item.label}
+                {item.columns ? (
+                  <span className="text-[10px] opacity-70" aria-hidden>
+                    ▾
+                  </span>
+                ) : null}
               </Link>
               <MegaMenu item={item} />
             </div>
