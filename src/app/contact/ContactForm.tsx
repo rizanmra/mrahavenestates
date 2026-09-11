@@ -1,13 +1,18 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { site } from "@/data/site";
 
 export default function ContactForm() {
   const [sent, setSent] = useState(false);
+  const { recordEnquiry } = useAuth();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const message = String(form.get("message") ?? "").trim();
+    recordEnquiry("contact", message || "Website enquiry submitted");
     setSent(true);
   }
 
@@ -27,7 +32,7 @@ export default function ContactForm() {
               <p>
                 <span className="text-[color:var(--muted)]">Phone: </span>
                 <a
-                  href={`tel:${site.phone}`}
+                  href={site.phoneHref}
                   className="hover:text-[color:var(--gold)]"
                 >
                   {site.phone}

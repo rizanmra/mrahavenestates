@@ -1,9 +1,11 @@
-import { HeroExperience } from "@/components/hero/HeroExperience";
-import { ServiceCards } from "@/components/ServiceCards";
-import { WhyChooseUs } from "@/components/WhyChooseUs";
-import { RemovalSection } from "@/components/RemovalSection";
 import { FeaturedProperties } from "@/components/FeaturedProperties";
+import { HeroExperience } from "@/components/hero/HeroExperience";
+import { RemovalSection } from "@/components/RemovalSection";
+import { ServiceCards } from "@/components/ServiceCards";
 import { Testimonials } from "@/components/Testimonials";
+import { ValuationCTA } from "@/components/ValuationCTA";
+import { WhyChooseUs } from "@/components/WhyChooseUs";
+import { site } from "@/data/site";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -13,6 +15,7 @@ export default function HomePage() {
       <ServiceCards />
       <WhyChooseUs />
       <FeaturedProperties />
+      <ValuationCTA />
       <RemovalSection />
       <Testimonials />
 
@@ -22,14 +25,26 @@ export default function HomePage() {
             Contact
           </h2>
           <p className="mt-6 text-lg text-[color:var(--muted)]">
-            Ready to move? Speak to our team today.
+            Ready to move? Speak to our team today on{" "}
+            <a href={site.phoneHref} className="text-[color:var(--gold)]">
+              {site.phone}
+            </a>
+            .
           </p>
-          <Link
-            href="/contact"
-            className="btn-outline-gold mt-10 inline-block px-10 py-4 text-sm tracking-wide uppercase"
-          >
-            Get in touch
-          </Link>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/contact"
+              className="btn-outline-gold inline-block px-10 py-4 text-sm tracking-wide uppercase"
+            >
+              Get in touch
+            </Link>
+            <Link
+              href="/login"
+              className="btn-gold inline-block px-10 py-4 text-sm tracking-wide uppercase"
+            >
+              Client login
+            </Link>
+          </div>
         </div>
       </section>
     </>

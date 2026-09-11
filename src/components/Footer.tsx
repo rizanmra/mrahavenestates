@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { legalLinks, site } from "@/data/site";
+import { BrandLogo } from "@/components/BrandLogo";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { legalLinks, site } from "@/data/site";
 
 function SocialIcon({ label, href }: { label: string; href: string }) {
   return (
@@ -21,7 +22,10 @@ export function Footer() {
     <footer className="border-t border-[color:var(--line)] bg-[color:var(--navy)]">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 py-16 lg:grid-cols-3 lg:px-10">
         <div>
-          <h2 className="font-display text-3xl text-white">Connect with Us</h2>
+          <BrandLogo size="footer" showWordmark />
+          <h2 className="font-display mt-8 text-3xl text-white">
+            Connect with Us
+          </h2>
           <div className="mt-8">
             <NewsletterForm />
           </div>
@@ -29,7 +33,7 @@ export function Footer() {
 
         <div>
           <a
-            href={`tel:${site.phone}`}
+            href={site.phoneHref}
             className="block text-white hover:text-[color:var(--gold)]"
           >
             {site.phone}

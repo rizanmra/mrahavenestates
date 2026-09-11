@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { SavePropertyButton } from "@/components/SavePropertyButton";
 import { getProperty, properties } from "@/data/properties";
 
 type PropertyPageProps = {
@@ -80,12 +81,15 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <dd className="mt-2 text-xl text-white">{property.area}</dd>
             </div>
           </dl>
-          <Link
-            href="/contact"
-            className="btn-gold mt-10 inline-block px-8 py-3 text-sm font-medium uppercase"
-          >
-            Enquire about this property
-          </Link>
+          <div className="mt-10 flex flex-wrap gap-4">
+            <Link
+              href="/contact"
+              className="btn-gold inline-block px-8 py-3 text-sm font-medium uppercase"
+            >
+              Enquire about this property
+            </Link>
+            <SavePropertyButton slug={property.slug} />
+          </div>
         </div>
       </section>
     </div>

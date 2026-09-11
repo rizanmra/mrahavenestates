@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { InfoBody, PageHero } from "@/components/PageTemplate";
+import { StampDutyCalculator } from "./StampDutyCalculator";
 
 export const metadata: Metadata = {
   title: "Stamp Duty Calculator",
@@ -9,9 +10,16 @@ export const metadata: Metadata = {
 export default function StampDutyPage() {
   return (
     <>
-      <PageHero title="Stamp Duty Calculator" />
+      <PageHero
+        title="Stamp Duty Calculator"
+        subtitle="A quick England & Northern Ireland SDLT estimate."
+      />
       <InfoBody cta={{ label: "Speak to an advisor", href: "/contact" }}>
-        <p>Interactive calculator coming soon. Contact us for personalised advice.</p>
+        <p>
+          Use this guide to estimate Stamp Duty Land Tax on a residential
+          purchase. Rates can change and additional surcharges may apply.
+        </p>
+        <StampDutyCalculator />
       </InfoBody>
     </>
   );

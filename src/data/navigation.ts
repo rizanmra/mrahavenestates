@@ -43,9 +43,9 @@ export const mainNav: NavItem[] = [
       {
         title: "Useful Information",
         links: [
-          { label: "Area Guides", href: "/area-guides" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Selling a Property", href: "/sell" },
+          { label: "Area Guides", href: "/area-guides" },
         ],
       },
     ],
@@ -54,15 +54,15 @@ export const mainNav: NavItem[] = [
     label: "Sell",
     href: "/sell",
     highlight: {
-      label: "Book Your FREE Valuation",
-      href: "/free-valuation",
+      label: "How much is my house worth?",
+      href: "/property-value-calculator",
     },
     columns: [
       {
         title: "Selling Your Property",
         links: [
           { label: "Sell Your Property", href: "/sell" },
-          { label: "Unrivalled Marketing", href: "/sell/marketing" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Sell at Auction", href: "/sell/auction" },
         ],
       },
@@ -71,13 +71,13 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Mortgages", href: "/mortgages" },
           { label: "Conveyancing", href: "/conveyancing" },
-          { label: "Removal Services", href: "/removal-services" },
+          { label: "Unrivalled Marketing", href: "/sell/marketing" },
         ],
       },
       {
         title: "Useful Information",
         links: [
-          { label: "Area Guides", href: "/area-guides" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Find Your Local Branch", href: "/branches" },
           { label: "Property Insights & News", href: "/news" },
         ],
@@ -175,8 +175,8 @@ export const mainNav: NavItem[] = [
       {
         title: "Useful Information",
         links: [
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Area Guides", href: "/area-guides" },
           { label: "Contact Us", href: "/contact" },
         ],
       },
@@ -209,8 +209,8 @@ export const mainNav: NavItem[] = [
       {
         title: "Useful Information",
         links: [
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Area Guides", href: "/area-guides" },
           { label: "Contact Us", href: "/contact" },
         ],
       },
@@ -258,4 +258,5 @@ export const mainNav: NavItem[] = [
 export const utilityLinks = [
   { label: "My Saved Properties", href: "/saved-properties" },
   { label: "My Account", href: "/account" },
+  { label: "Login", href: "/login" },
 ];

@@ -20,15 +20,23 @@ export function ValuationCTA() {
           How much is your property worth?
         </h2>
         <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
-          Get a free, no-obligation valuation from our local property experts.
-          We know the Bradford market inside out.
+          Enter your address for a free estimated market value — soft opt-in,
+          then book a free valuation with our Bradford team.
         </p>
-        <Link
-          href="/free-valuation"
-          className="btn-gold mt-10 inline-block px-10 py-4 text-sm font-medium tracking-wide uppercase"
-        >
-          Book your property valuation
-        </Link>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/property-value-calculator"
+            className="btn-gold inline-block px-10 py-4 text-sm font-medium tracking-wide uppercase"
+          >
+            Check my property value
+          </Link>
+          <Link
+            href="/free-valuation"
+            className="btn-outline-gold inline-block px-10 py-4 text-sm font-medium tracking-wide uppercase"
+          >
+            Book a free valuation
+          </Link>
+        </div>
       </div>
     </section>
   );

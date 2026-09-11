@@ -5,6 +5,9 @@ export type PropertyTypeEstimate =
   | "flat"
   | "bungalow";
 
+export type PropertyCondition = "needs-work" | "average" | "good" | "excellent";
+
+/** Indicative Bradford / West Yorkshire outcode baselines (guide only). */
 const postcodeBase: Record<string, number> = {
   BD1: 195_000,
   BD2: 185_000,
@@ -29,7 +32,15 @@ const postcodeBase: Record<string, number> = {
   BD21: 165_000,
   BD22: 310_000,
   LS1: 285_000,
+  LS28: 245_000,
   LS29: 320_000,
+  HX1: 155_000,
+  HX2: 175_000,
+  HX3: 210_000,
+  HD1: 145_000,
+  HD2: 165_000,
+  WF1: 180_000,
+  WF2: 195_000,
 };
 
 const typeMultiplier: Record<PropertyTypeEstimate, number> = {
@@ -38,6 +49,13 @@ const typeMultiplier: Record<PropertyTypeEstimate, number> = {
   terrace: 0.95,
   flat: 0.82,
   bungalow: 1.1,
+};
+
+const conditionMultiplier: Record<PropertyCondition, number> = {
+  "needs-work": 0.88,
+  average: 1,
+  good: 1.06,
+  excellent: 1.12,
 };
 
 function extractOutcode(postcode: string): string {
@@ -55,35 +73,52 @@ function bedsMultiplier(beds: number): number {
   return 1.45;
 }
 
+function outdoorMultiplier(hasGarden: boolean, parking: boolean): number {
+  let m = 1;
+  if (hasGarden) m += 0.03;
+  if (parking) m += 0.025;
+  return m;
+}
+
 export type MarketEstimate = {
   low: number;
   mid: number;
   high: number;
   area: string;
+  confidence: "local" | "regional";
 };
 
 export function estimateMarketValue(input: {
   postcode: string;
   propertyType: PropertyTypeEstimate;
   bedrooms: number;
+  condition?: PropertyCondition;
+  hasGarden?: boolean;
+  hasParking?: boolean;
 }): MarketEstimate | null {
   const outcode = extractOutcode(input.postcode);
   if (!outcode || input.bedrooms < 1) return null;
 
+  const known = Object.prototype.hasOwnProperty.call(postcodeBase, outcode);
   const base = postcodeBase[outcode] ?? 185_000;
+  const condition = input.condition ?? "average";
+
   const mid = Math.round(
     base *
       typeMultiplier[input.propertyType] *
-      bedsMultiplier(input.bedrooms),
+      bedsMultiplier(input.bedrooms) *
+      conditionMultiplier[condition] *
+      outdoorMultiplier(Boolean(input.hasGarden), Boolean(input.hasParking)),
   );
 
-  const spread = Math.round(mid * 0.06);
+  const spread = Math.round(mid * (known ? 0.06 : 0.09));
 
   return {
     low: mid - spread,
     mid,
     high: mid + spread,
     area: outcode,
+    confidence: known ? "local" : "regional",
   };
 }
 
@@ -94,3 +129,18 @@ export function formatGbp(value: number): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+export const propertyTypeLabels: Record<PropertyTypeEstimate, string> = {
+  detached: "Detached",
+  semi: "Semi-detached",
+  terrace: "Terraced",
+  flat: "Flat / apartment",
+  bungalow: "Bungalow",
+};
+
+export const conditionLabels: Record<PropertyCondition, string> = {
+  "needs-work": "Needs work",
+  average: "Average",
+  good: "Good",
+  excellent: "Excellent",
+};

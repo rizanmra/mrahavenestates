@@ -3,7 +3,9 @@ import { siteImages } from "@/data/hero-images";
 export const site = {
   name: "MRA Haven Estates",
   tagline: "Discover Your Dream Home",
-  phone: "123-456-7890",
+  logo: "/images/brand/logo.jpg",
+  phone: "0330 133 3786",
+  phoneHref: "tel:03301333786",
   email: "info@mrahavenestates.co.uk",
   address: {
     line1: "Unit 3",

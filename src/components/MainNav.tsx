@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { BrandLogo } from "@/components/BrandLogo";
 import { mainNav, utilityLinks, type NavItem } from "@/data/navigation";
 import { site } from "@/data/site";
 
@@ -49,6 +51,7 @@ export function MainNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const { session, logout } = useAuth();
 
   useEffect(() => {
     setMobileOpen(false);
@@ -71,30 +74,37 @@ export function MainNav() {
     >
       <div className="hidden border-b border-white/10 lg:block">
         <div className="mx-auto flex max-w-7xl items-center justify-end gap-6 px-6 py-2 text-xs">
-          {utilityLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
+          {utilityLinks
+            .filter((link) => !(session && link.href === "/login"))
+            .map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-white/70 hover:text-[color:var(--gold)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          {session ? (
+            <button
+              type="button"
+              onClick={logout}
               className="text-white/70 hover:text-[color:var(--gold)]"
             >
-              {link.label}
-            </Link>
-          ))}
+              Sign out
+            </button>
+          ) : null}
+          <a
+            href={site.phoneHref}
+            className="text-[color:var(--gold)] hover:text-white"
+          >
+            {site.phone}
+          </a>
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-        <Link href="/" className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold tracking-wide text-white">
-            MRA
-          </span>
-          <span className="text-sm font-semibold tracking-wide text-white">
-            Haven Estates
-          </span>
-          <span className="mt-1 text-[10px] tracking-[0.28em] text-[color:var(--gold)] uppercase">
-            Helping People Move
-          </span>
-        </Link>
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-10">
+        <BrandLogo priority />
 
         <nav className="hidden items-center gap-6 lg:flex">
           <Link
@@ -206,7 +216,9 @@ export function MainNav() {
             </div>
           ))}
           <div className="border-t border-[color:var(--line)] pt-3">
-            {utilityLinks.map((link) => (
+            {utilityLinks
+              .filter((link) => !(session && link.href === "/login"))
+              .map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -216,8 +228,20 @@ export function MainNav() {
                 {link.label}
               </Link>
             ))}
+            {session ? (
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setMobileOpen(false);
+                }}
+                className="block py-2 text-sm text-white/70"
+              >
+                Sign out
+              </button>
+            ) : null}
             <a
-              href={`tel:${site.phone}`}
+              href={site.phoneHref}
               className="block py-2 text-sm text-[color:var(--gold)]"
             >
               {site.phone}

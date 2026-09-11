@@ -22,7 +22,10 @@ export default function BranchesPage() {
           {site.address.city}, {site.address.postcode}
           <br />
           <br />
-          Phone: {site.phone}
+          Phone:{" "}
+          <a href={site.phoneHref} className="text-white hover:text-[color:var(--gold)]">
+            {site.phone}
+          </a>
           <br />
           Email: {site.email}
         </p>

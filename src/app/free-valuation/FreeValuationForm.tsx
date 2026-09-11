@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import { FormEvent, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { siteImages } from "@/data/hero-images";
 
 export default function FreeValuationForm() {
   const [sent, setSent] = useState(false);
+  const { recordEnquiry } = useAuth();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    recordEnquiry("valuation", "Free valuation request submitted");
     setSent(true);
   }
 
