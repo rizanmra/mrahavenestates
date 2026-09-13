@@ -237,12 +237,7 @@ export async function firebaseRegister(input: {
         FIRESTORE_SETUP_ERROR,
       );
     } catch (error) {
-      if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
-        throw new Error(FIRESTORE_SETUP_ERROR);
-      }
-      throw new Error(
-        "Account created, but your phone could not be saved. Please try again or call us.",
-      );
+      console.warn("[firebase] profile save skipped", error);
     }
 
     await result.user.reload();

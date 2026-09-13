@@ -368,14 +368,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         if (usingFirebase) {
-          await loadUserData(await firebaseLogin(email, password));
-          return;
+          try {
+            await loadUserData(await firebaseLogin(email, password));
+            return;
+          } catch (error) {
+            if (!isAdminEmail(email)) {
+              try {
+                await loadUserData(await loginUser({ email, password }));
+                return;
+              } catch {
+                // Keep the Firebase error for the customer.
+              }
+            }
+            throw error;
+          }
         }
         await loadUserData(await loginUser({ email, password }));
       },
       register: async (input) => {
         if (usingFirebase) {
           await loadUserData(await firebaseRegister(input));
+          try {
+            await registerUser(input);
+          } catch {
+            // Local copy is only a fallback if Firebase sign-in is unavailable.
+          }
           markNewSignupWelcome();
           return;
         }

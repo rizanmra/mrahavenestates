@@ -13,7 +13,11 @@ import {
 } from "@/lib/property-enquiry";
 
 const COLLECTION = "propertyEnquiries";
-const FILE_PATH = path.join(process.cwd(), ".data", "property-enquiries.json");
+const FILE_PATH = path.join(
+  process.env.VERCEL ? "/tmp" : path.join(process.cwd(), ".data"),
+  "property-enquiries.json",
+);
+let memoryInbox: PropertyEnquiryRecord[] = [];
 
 type TokenCache = { token: string; expiresAt: number };
 let staffToken: TokenCache | null = null;
@@ -364,9 +368,9 @@ async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boole
     );
   };
 
-  let res = token ? await post(true) : await post(false);
+  let res = await post(false);
   if (!res.ok && token && (res.status === 401 || res.status === 403)) {
-    res = await post(false);
+    res = await post(true);
   }
   if (!res.ok) {
     const body = await res.text();
@@ -419,8 +423,20 @@ function mergeRecords(groups: PropertyEnquiryRecord[][]) {
 export async function savePropertyEnquiry(
   record: PropertyEnquiryRecord,
 ): Promise<void> {
-  const current = await readFileStore();
-  await writeFileStore([record, ...current.filter((item) => item.id !== record.id)]);
+  memoryInbox = [
+    record,
+    ...memoryInbox.filter((item) => item.id !== record.id),
+  ];
+
+  try {
+    const current = await readFileStore();
+    await writeFileStore([
+      record,
+      ...current.filter((item) => item.id !== record.id),
+    ]);
+  } catch (error) {
+    console.warn("[admin] local inbox write skipped", error);
+  }
 
   try {
     const viaSdk = await saveToAdminSdk(record);
@@ -439,7 +455,7 @@ export async function listPropertyEnquiries(): Promise<PropertyEnquiryRecord[]> 
   } catch (error) {
     console.warn("[admin] cloud inbox read skipped", error);
   }
-  return mergeRecords([file, cloud]);
+  return mergeRecords([memoryInbox, file, cloud]);
 }
 
 export async function markPropertyEnquiryRead(

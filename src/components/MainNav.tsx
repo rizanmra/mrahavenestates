@@ -127,7 +127,7 @@ export function MainNav() {
                     }, 50);
                   }
                 }}
-                className="cursor-pointer whitespace-nowrap text-white/70 transition-colors hover:text-[color:var(--gold)]"
+                className="cursor-pointer whitespace-nowrap font-medium text-[color:var(--gold)] transition-colors hover:text-white"
               >
                 {link.label}
               </Link>
@@ -137,14 +137,14 @@ export function MainNav() {
             <button
               type="button"
               onClick={signOut}
-              className="cursor-pointer whitespace-nowrap text-white/70 transition-colors hover:text-[color:var(--gold)]"
+              className="cursor-pointer whitespace-nowrap font-medium text-[color:var(--gold)] transition-colors hover:text-white"
             >
               Sign out
             </button>
           ) : null}
           <a
             href={site.phoneHref}
-            className="cursor-pointer whitespace-nowrap text-[color:var(--gold)] transition-colors hover:text-white"
+            className="cursor-pointer whitespace-nowrap font-medium text-[color:var(--gold)] transition-colors hover:text-white"
           >
             {site.phone}
           </a>
@@ -158,11 +158,7 @@ export function MainNav() {
 
         <button
           type="button"
-          className={`shrink-0 cursor-pointer rounded border px-5 py-3 text-base font-medium tracking-wide transition-colors ${
-            menuOpen
-              ? "border-[color:var(--gold)] text-[color:var(--gold)]"
-              : "border-white/40 text-white hover:border-[color:var(--gold)] hover:text-[color:var(--gold)]"
-          }`}
+          className="btn-gold shrink-0 rounded px-5 py-3 text-base font-medium tracking-wide uppercase"
           onClick={() => setMenuOpen((open) => !open)}
           aria-expanded={menuOpen}
           aria-label={menuOpen ? "Close menu" : "Open menu"}
