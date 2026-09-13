@@ -15,7 +15,7 @@ import type { Property } from "@/data/properties";
 import { firebaseGetIdToken } from "@/lib/firebase-auth";
 import type { PropertyEnquiryRecord } from "@/lib/property-enquiry";
 
-type Tab = "enquiries" | "listings";
+type Tab = "enquiries" | "listings" | "password";
 
 const ENQUIRIES_PER_PAGE = 10;
 
@@ -34,7 +34,11 @@ export function AdminPortal() {
   const searchParams = useSearchParams();
   const { ready, session, isAdmin, logout, usingFirebase } = useAuth();
   const initialTab =
-    searchParams.get("tab") === "listings" ? "listings" : "enquiries";
+    searchParams.get("tab") === "listings"
+      ? "listings"
+      : searchParams.get("tab") === "password"
+        ? "password"
+        : "enquiries";
   const [tab, setTab] = useState<Tab>(initialTab);
   const [enquiries, setEnquiries] = useState<PropertyEnquiryRecord[]>([]);
   const [listings, setListings] = useState<Property[]>([]);
@@ -49,6 +53,13 @@ export function AdminPortal() {
   const [editingBaths, setEditingBaths] = useState(1);
   const [listingType, setListingType] = useState<"sale" | "rent">("rent");
   const [listingBusy, setListingBusy] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [enquiryPage, setEnquiryPage] = useState(1);
   const listingEditorRef = useRef<HTMLFormElement>(null);
   const scrollToEditorAfterTab = useRef(false);
@@ -182,7 +193,11 @@ export function AdminPortal() {
   function selectTab(next: Tab) {
     setTab(next);
     const href =
-      next === "listings" ? "/admin?tab=listings" : "/admin?tab=enquiries";
+      next === "listings"
+        ? "/admin?tab=listings"
+        : next === "password"
+          ? "/admin?tab=password"
+          : "/admin?tab=enquiries";
     router.replace(href, { scroll: false });
   }
 
@@ -365,6 +380,45 @@ export function AdminPortal() {
     }
   }
 
+  async function onChangePassword(event: FormEvent) {
+    event.preventDefault();
+    setPasswordMessage("");
+    setError("");
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage("New passwords do not match.");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      const res = await fetch("/api/admin/password", {
+        method: "POST",
+        headers: await authHeaders(),
+        credentials: "include",
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setPasswordMessage(data.error || "Could not update password.");
+        return;
+      }
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setPasswordMessage(
+        "Password updated in Firebase. Use this password the next time you sign in.",
+      );
+    } catch {
+      setPasswordMessage("Could not update password.");
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   if (!ready || !session || !isAdmin) {
     return (
       <div className="page-offset px-6 py-16 text-center text-[color:var(--muted)]">
@@ -428,6 +482,17 @@ export function AdminPortal() {
             >
               Listings ({listings.length})
             </button>
+            <button
+              type="button"
+              onClick={() => selectTab("password")}
+              className={`cursor-pointer px-5 py-3 text-sm uppercase tracking-wide ${
+                tab === "password"
+                  ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
+                  : "border border-[color:var(--line)] text-white hover:border-[color:var(--gold)]"
+              }`}
+            >
+              Password
+            </button>
           </div>
 
           {loading ? (
@@ -435,7 +500,89 @@ export function AdminPortal() {
           ) : null}
           {error ? <p className="mt-8 text-sm text-error">{error}</p> : null}
 
-          {tab === "enquiries" ? (
+          {tab === "password" ? (
+            <form
+              onSubmit={onChangePassword}
+              className="mt-12 max-w-lg space-y-4 border border-[color:var(--line)] p-6"
+            >
+              <h2 className="font-display text-3xl text-white">
+                Change staff password
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                This saves the new password in Firebase Auth for{" "}
+                {session.email}. You can also change it in the Firebase
+                Console — either place is the login password.
+              </p>
+              <label className="block">
+                <span className="text-sm text-white">Current password</span>
+                <input
+                  required
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({
+                      ...current,
+                      currentPassword: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none focus:border-[color:var(--gold)]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm text-white">New password</span>
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({
+                      ...current,
+                      newPassword: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none focus:border-[color:var(--gold)]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm text-white">Confirm new password</span>
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) =>
+                    setPasswordForm((current) => ({
+                      ...current,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none focus:border-[color:var(--gold)]"
+                />
+              </label>
+              {passwordMessage ? (
+                <p
+                  className={`text-sm ${
+                    passwordMessage.startsWith("Password updated")
+                      ? "text-[color:var(--gold)]"
+                      : "text-error"
+                  }`}
+                >
+                  {passwordMessage}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={passwordBusy}
+                className="btn-gold px-6 py-3 text-sm uppercase disabled:opacity-70"
+              >
+                {passwordBusy ? "Saving…" : "Update password"}
+              </button>
+            </form>
+          ) : tab === "enquiries" ? (
             <div className="mt-12">
               {!loading && sortedEnquiries.length === 0 ? (
                 <p className="text-[color:var(--muted)]">

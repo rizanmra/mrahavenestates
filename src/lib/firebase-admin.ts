@@ -1,4 +1,5 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let app: App | null = null;
@@ -31,9 +32,8 @@ function readServiceAccount() {
   return null;
 }
 
-/** Server-only Admin Firestore. Returns null when credentials are not configured. */
-export function getAdminFirestore(): Firestore | null {
-  if (db) return db;
+function ensureAdminApp(): App | null {
+  if (app) return app;
 
   const account = readServiceAccount();
   if (!account?.project_id || !account.client_email || !account.private_key) {
@@ -53,6 +53,21 @@ export function getAdminFirestore(): Firestore | null {
     app = getApps()[0]!;
   }
 
-  db = getFirestore(app);
+  return app;
+}
+
+/** Server-only Admin Firestore. Returns null when credentials are not configured. */
+export function getAdminFirestore(): Firestore | null {
+  if (db) return db;
+  const firebaseApp = ensureAdminApp();
+  if (!firebaseApp) return null;
+  db = getFirestore(firebaseApp);
   return db;
+}
+
+/** Server-only Admin Auth. Used to update the staff password in Firebase. */
+export function getAdminAuth(): Auth | null {
+  const firebaseApp = ensureAdminApp();
+  if (!firebaseApp) return null;
+  return getAuth(firebaseApp);
 }

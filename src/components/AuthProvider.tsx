@@ -360,6 +360,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminEmail(session?.email),
       usingFirebase,
       login: async (email, password) => {
+        if (isAdminEmail(email) && usingFirebase) {
+          try {
+            await loadUserData(await firebaseLogin(email, password));
+            return;
+          } catch {
+            // Fall through to the env staff password, then local accounts.
+          }
+        }
         if (isAdminEmail(email)) {
           const staff = await staffPasswordLogin(email, password);
           if (staff) {
