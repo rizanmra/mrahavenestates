@@ -34,7 +34,7 @@ export function HomeListingsTabs({
         <div
           role="tablist"
           aria-label="Homepage listings"
-          className="mt-6 grid grid-cols-2 border-b border-[color:var(--line)] sm:grid-cols-3 lg:grid-cols-5"
+          className="mt-6 flex w-full items-stretch border-b border-[color:var(--line)]"
         >
           {tabs.map((item) => {
             const active = tab === item.id;
@@ -45,7 +45,7 @@ export function HomeListingsTabs({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(item.id)}
-                className={`flex min-h-[3.5rem] items-center justify-center px-2 py-3 text-center text-xs tracking-wide uppercase transition-colors md:text-sm ${
+                className={`flex min-h-[4.25rem] flex-1 items-center justify-center px-1 py-3 text-center text-[10px] leading-tight tracking-wide uppercase transition-colors sm:px-2 sm:text-xs md:min-h-[3.75rem] md:text-sm ${
                   active
                     ? "-mb-px border-b-2 border-[color:var(--gold)] text-[color:var(--gold)]"
                     : "text-[color:var(--muted)] hover:text-white"

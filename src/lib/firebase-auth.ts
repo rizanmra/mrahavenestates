@@ -49,18 +49,19 @@ function omitUndefined<T extends Record<string, unknown>>(value: T): T {
 }
 
 function enquiryForFirestore(enquiry: PortalEnquiry): Record<string, string | number> {
-  return omitUndefined({
+  const clean: Record<string, string | number> = {
     id: enquiry.id,
     type: enquiry.type,
     summary: enquiry.summary,
     createdAt: enquiry.createdAt,
-    ownerUserId: enquiry.ownerUserId,
-    ownerEmail: enquiry.ownerEmail,
-    status: enquiry.status,
-    reply: enquiry.reply,
-    repliedAt: enquiry.repliedAt,
-    sourceEnquiryId: enquiry.sourceEnquiryId,
-  });
+  };
+  if (enquiry.ownerUserId) clean.ownerUserId = enquiry.ownerUserId;
+  if (enquiry.ownerEmail) clean.ownerEmail = enquiry.ownerEmail;
+  if (enquiry.status) clean.status = enquiry.status;
+  if (enquiry.reply) clean.reply = enquiry.reply;
+  if (enquiry.repliedAt != null) clean.repliedAt = enquiry.repliedAt;
+  if (enquiry.sourceEnquiryId) clean.sourceEnquiryId = enquiry.sourceEnquiryId;
+  return clean;
 }
 
 function authErrorMessage(error: unknown, fallback: string): string {
