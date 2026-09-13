@@ -92,6 +92,7 @@ export function AdminPortal() {
     const res = await fetch("/api/admin/property-enquiries", {
       headers: await authHeaders(),
       cache: "no-store",
+      credentials: "include",
     });
     const data = (await res.json()) as {
       ok?: boolean;
@@ -108,6 +109,7 @@ export function AdminPortal() {
     const res = await fetch("/api/admin/properties", {
       headers: await authHeaders(),
       cache: "no-store",
+      credentials: "include",
     });
     const data = (await res.json()) as {
       ok?: boolean;
@@ -188,6 +190,7 @@ export function AdminPortal() {
     const res = await fetch("/api/admin/property-enquiries", {
       method: "PATCH",
       headers: await authHeaders(),
+      credentials: "include",
       body: JSON.stringify({ id, read }),
     });
     const data = (await res.json()) as {

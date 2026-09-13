@@ -44,6 +44,61 @@ import {
   type PortalSession,
 } from "@/lib/portal";
 
+async function fetchStaffSession(): Promise<PortalSession | null> {
+  try {
+    const res = await fetch("/api/admin/session", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      userId?: string;
+      email?: string;
+      name?: string;
+      phone?: string;
+    };
+    if (!res.ok || !data.ok || !data.email || !data.userId) return null;
+    return {
+      userId: data.userId,
+      email: data.email,
+      name: data.name || "MRA Admin",
+      phone: data.phone || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function staffPasswordLogin(
+  email: string,
+  password: string,
+): Promise<PortalSession | null> {
+  try {
+    const res = await fetch("/api/admin/session", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      userId?: string;
+      email?: string;
+      name?: string;
+      phone?: string;
+    };
+    if (!res.ok || !data.ok || !data.email || !data.userId) return null;
+    return {
+      userId: data.userId,
+      email: data.email,
+      name: data.name || "MRA Admin",
+      phone: data.phone || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 type EnquiryStatusUpdate = {
   sourceEnquiryId: string;
   status: "answered" | "closed";
@@ -233,13 +288,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (usingFirebase) {
       const unsub = watchFirebaseSession((next) => {
-        void loadUserData(next).finally(() => setReady(true));
+        void (async () => {
+          if (next) {
+            await loadUserData(next);
+          } else {
+            await loadUserData(await fetchStaffSession());
+          }
+          setReady(true);
+        })();
       });
       return unsub;
     }
 
     void ensureDemoAdminAccount()
-      .then(() => loadUserData(getSession()))
+      .then(async () => {
+        const staff = await fetchStaffSession();
+        await loadUserData(staff || getSession());
+      })
       .finally(() => setReady(true));
     return undefined;
   }, [loadUserData, usingFirebase]);
@@ -295,6 +360,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminEmail(session?.email),
       usingFirebase,
       login: async (email, password) => {
+        if (isAdminEmail(email)) {
+          const staff = await staffPasswordLogin(email, password);
+          if (staff) {
+            await loadUserData(staff);
+            return;
+          }
+        }
         if (usingFirebase) {
           await loadUserData(await firebaseLogin(email, password));
           return;
@@ -311,6 +383,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markNewSignupWelcome();
       },
       logout: () => {
+        void fetch("/api/admin/session", {
+          method: "DELETE",
+          credentials: "include",
+        });
         if (usingFirebase) {
           void firebaseLogout().then(() => loadUserData(null));
           return;

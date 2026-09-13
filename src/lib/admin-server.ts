@@ -1,6 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getPublicAdminEmail } from "@/lib/admin";
+import {
+  readStaffSessionCookie,
+  verifyStaffSessionToken,
+} from "@/lib/admin-session";
 import { recordClientEnquiryStatusUpdate } from "@/lib/client-enquiry-updates";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import {
@@ -71,6 +75,11 @@ export async function lookupFirebaseEmail(
 export async function requireAdminFromRequest(
   request: Request,
 ): Promise<{ ok: true; email: string } | { ok: false; status: number; error: string }> {
+  const cookieEmail = verifyStaffSessionToken(readStaffSessionCookie(request) || "");
+  if (cookieEmail) {
+    return { ok: true, email: cookieEmail };
+  }
+
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) {
