@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyStaffActions } from "@/components/PropertyStaffActions";
+import { seedProperties } from "@/data/properties";
 import {
   getPropertyBySlug,
   listProperties,
@@ -15,8 +16,12 @@ type PropertyPageProps = {
 };
 
 export async function generateStaticParams() {
-  const properties = await listProperties();
-  return properties.map((property) => ({ slug: property.slug }));
+  try {
+    const properties = await listProperties();
+    return properties.map((property) => ({ slug: property.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -29,7 +34,9 @@ export async function generateMetadata({
 
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property = await getPropertyBySlug(slug);
+  const property =
+    (await getPropertyBySlug(slug).catch(() => undefined)) ||
+    seedProperties.find((item) => item.slug === slug);
 
   if (!property) {
     notFound();

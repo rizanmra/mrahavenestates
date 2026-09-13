@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PropertyCard } from "@/components/PropertyCard";
-import type { PropertyType } from "@/data/properties";
+import { seedProperties, type Property, type PropertyType } from "@/data/properties";
 import { getPropertiesByType } from "@/lib/listings-store";
-import { syncRemovedPropertiesFromCatalogue } from "@/lib/purge-property-saves";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Properties",
@@ -22,13 +23,16 @@ type PropertiesPageProps = {
 export default async function PropertiesPage({
   searchParams,
 }: PropertiesPageProps) {
-  await syncRemovedPropertiesFromCatalogue();
-
   const params = await searchParams;
   const type: PropertyType = params.type === "sale" ? "sale" : "rent";
   const forSale = type === "sale";
 
-  let results = await getPropertiesByType(type);
+  let results: Property[] = [];
+  try {
+    results = await getPropertiesByType(type);
+  } catch {
+    results = seedProperties.filter((item) => item.type === type);
+  }
 
   if (params.location) {
     const query = params.location.toLowerCase();

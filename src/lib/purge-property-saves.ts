@@ -58,7 +58,12 @@ export async function syncRemovedPropertiesFromCatalogue(): Promise<{
       return { removed: [], purgedUsers: 0 };
     }
 
-    const catalogue = await listProperties();
+    let catalogue: Awaited<ReturnType<typeof listProperties>> = [];
+    try {
+      catalogue = await listProperties();
+    } catch {
+      return { removed: [], purgedUsers: 0 };
+    }
     const currentSlugs = catalogue.map((property) => property.slug);
     const metaRef = db.doc(META_DOC);
     const metaSnap = await metaRef.get();
