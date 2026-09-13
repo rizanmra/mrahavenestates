@@ -47,6 +47,7 @@ export function AdminPortal() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingBaths, setEditingBaths] = useState(1);
+  const [listingType, setListingType] = useState<"sale" | "rent">("rent");
   const [listingBusy, setListingBusy] = useState(false);
   const [enquiryPage, setEnquiryPage] = useState(1);
   const listingEditorRef = useRef<HTMLFormElement>(null);
@@ -265,6 +266,7 @@ export function AdminPortal() {
     setEditingSlug(property.slug);
     setEditingTitle(property.title);
     setEditingBaths(property.baths || 1);
+    setListingType(property.type === "sale" ? "sale" : "rent");
     setForm({
       title: property.title,
       location: property.location,
@@ -292,6 +294,7 @@ export function AdminPortal() {
     setEditingSlug(null);
     setEditingTitle("");
     setEditingBaths(1);
+    setListingType("rent");
     setForm(emptyForm);
   }
 
@@ -307,8 +310,8 @@ export function AdminPortal() {
         beds: Number(form.beds) || 0,
         baths: editingSlug ? editingBaths : 1,
         area: form.area,
-        type: "rent" as const,
-        status: "For Rent" as const,
+        type: listingType,
+        status: listingType === "sale" ? ("For Sale" as const) : ("For Rent" as const),
         summary: form.summary,
         image: form.image,
       };
@@ -379,8 +382,8 @@ export function AdminPortal() {
               Listings &amp; enquiries
             </h1>
             <p className="mt-4 max-w-2xl text-[color:var(--muted)]">
-              Add, update, or remove rental listings and reply to property
-              enquiries. This portal is for staff only — not for renting or
+              Add, update, or remove sale and rental listings and reply to
+              property enquiries. This portal is for staff only — not for
               client lead forms.
             </p>
           </div>
@@ -608,21 +611,49 @@ export function AdminPortal() {
                     <span className="font-medium text-white">
                       {editingTitle || form.title || "this listing"}
                     </span>
-                    . Update the fields below, then save. All listings are for
-                    rent.
+                    . Choose sale or rent, update the fields, then save.
                   </p>
                 ) : (
                   <p className="text-sm text-[color:var(--muted)]">
-                    New listings are published as rentals. Slug is generated
-                    automatically from the title.
+                    Choose whether this property is for sale or to rent. The
+                    listing URL is generated automatically from the title.
                   </p>
                 )}
+                <fieldset>
+                  <legend className="text-sm text-white">Listing type *</legend>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        ["sale", "For sale"],
+                        ["rent", "For rent"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setListingType(value)}
+                        className={`cursor-pointer px-4 py-3 text-sm font-semibold uppercase tracking-wide ${
+                          listingType === value
+                            ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
+                            : "border border-[color:var(--line)] text-white hover:border-[color:var(--gold)]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
                 <div className="grid gap-4 md:grid-cols-2">
                   {(
                     [
                       ["title", "Title"],
                       ["location", "Location"],
-                      ["price", "Price (e.g. £950 pcm)"],
+                      [
+                        "price",
+                        listingType === "sale"
+                          ? "Price (e.g. £285,000)"
+                          : "Price (e.g. £950 pcm)",
+                      ],
                       ["area", "Area"],
                       ["beds", "Bedrooms"],
                       ["image", "Image URL"],
@@ -691,7 +722,8 @@ export function AdminPortal() {
                   >
                     <div>
                       <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
-                        For rent · {property.beds}{" "}
+                        {property.type === "sale" ? "For sale" : "For rent"} ·{" "}
+                        {property.beds}{" "}
                         {property.beds === 1 ? "bedroom" : "bedrooms"}
                       </p>
                       <h3 className="font-display mt-1 text-2xl text-white">
