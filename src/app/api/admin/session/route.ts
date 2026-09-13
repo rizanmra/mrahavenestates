@@ -21,7 +21,7 @@ function staffProfile(email: string) {
 export async function GET(request: Request) {
   const email = verifyStaffSessionToken(readStaffSessionCookie(request) || "");
   if (!email) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return NextResponse.json({ ok: false });
   }
   return NextResponse.json(staffProfile(email));
 }

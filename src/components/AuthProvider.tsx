@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -201,9 +202,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(() => !usingFirebase);
   const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
   const [enquiries, setEnquiries] = useState<PortalEnquiry[]>([]);
+  const authEpoch = useRef(0);
+  const hadFirebaseUser = useRef(false);
 
   const loadUserData = useCallback(
-    async (next: PortalSession | null) => {
+    async (next: PortalSession | null, epoch?: number) => {
+      if (epoch !== undefined && epoch !== authEpoch.current) return;
       if (!next) {
         setSession(null);
         setSavedSlugs([]);
@@ -211,7 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (usingFirebase) {
+      const cookieStaff = next.userId === "mra-staff-admin";
+      if (usingFirebase && !cookieStaff) {
         try {
           const enriched = await firebaseEnrichSession(next);
           setSession(enriched);
@@ -288,13 +293,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (usingFirebase) {
       const unsub = watchFirebaseSession((next) => {
+        const epoch = ++authEpoch.current;
         void (async () => {
           if (next) {
-            await loadUserData(next);
+            hadFirebaseUser.current = true;
+            await loadUserData(next, epoch);
           } else {
-            await loadUserData(await fetchStaffSession());
+            const staff = await fetchStaffSession();
+            if (epoch !== authEpoch.current) return;
+            if (staff) {
+              hadFirebaseUser.current = false;
+              await loadUserData(staff, epoch);
+            } else if (hadFirebaseUser.current) {
+              hadFirebaseUser.current = false;
+              await loadUserData(null, epoch);
+            }
           }
-          setReady(true);
+          if (epoch === authEpoch.current) setReady(true);
         })();
       });
       return unsub;
@@ -360,9 +375,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminEmail(session?.email),
       usingFirebase,
       login: async (email, password) => {
+        const epoch = ++authEpoch.current;
         if (isAdminEmail(email) && usingFirebase) {
           try {
-            await loadUserData(await firebaseLogin(email, password));
+            await loadUserData(await firebaseLogin(email, password), epoch);
             return;
           } catch {
             // Fall through to the env staff password, then local accounts.
@@ -371,18 +387,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isAdminEmail(email)) {
           const staff = await staffPasswordLogin(email, password);
           if (staff) {
-            await loadUserData(staff);
+            await loadUserData(staff, epoch);
             return;
           }
         }
         if (usingFirebase) {
           try {
-            await loadUserData(await firebaseLogin(email, password));
+            await loadUserData(await firebaseLogin(email, password), epoch);
             return;
           } catch (error) {
             if (!isAdminEmail(email)) {
               try {
-                await loadUserData(await loginUser({ email, password }));
+                await loadUserData(await loginUser({ email, password }), epoch);
                 return;
               } catch {
                 // Keep the Firebase error for the customer.
@@ -391,11 +407,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw error;
           }
         }
-        await loadUserData(await loginUser({ email, password }));
+        await loadUserData(await loginUser({ email, password }), epoch);
       },
       register: async (input) => {
+        const epoch = ++authEpoch.current;
         if (usingFirebase) {
-          await loadUserData(await firebaseRegister(input));
+          await loadUserData(await firebaseRegister(input), epoch);
           try {
             await registerUser(input);
           } catch {
@@ -404,20 +421,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           markNewSignupWelcome();
           return;
         }
-        await loadUserData(await registerUser(input));
+        await loadUserData(await registerUser(input), epoch);
         markNewSignupWelcome();
       },
       logout: () => {
+        authEpoch.current += 1;
+        hadFirebaseUser.current = false;
         void fetch("/api/admin/session", {
           method: "DELETE",
           credentials: "include",
         });
         if (usingFirebase) {
-          void firebaseLogout().then(() => loadUserData(null));
+          void firebaseLogout().then(() => loadUserData(null, authEpoch.current));
           return;
         }
         logoutUser();
-        void loadUserData(null);
+        void loadUserData(null, authEpoch.current);
       },
       savedSlugs,
       enquiries,
