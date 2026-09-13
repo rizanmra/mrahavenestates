@@ -61,12 +61,16 @@ async function writeFileStore(list: Property[]) {
 
 export async function listProperties(): Promise<Property[]> {
   if (cache) return cache;
+  const seed = normalize(seedProperties);
   const fromFile = await readFileStore();
   if (fromFile) {
-    cache = fromFile;
+    const existing = new Set(fromFile.map((item) => item.slug));
+    const missing = seed.filter((item) => !existing.has(item.slug));
+    cache = normalize([...missing, ...fromFile]);
+    if (missing.length) await writeFileStore(cache);
     return cache;
   }
-  cache = normalize(seedProperties);
+  cache = seed;
   await writeFileStore(cache);
   return cache;
 }

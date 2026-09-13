@@ -29,6 +29,14 @@ function firebaseApiKey() {
   return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
 }
 
+function getAdminDisplayName() {
+  return process.env.ADMIN_NAME?.trim() || "MRA Admin";
+}
+
+function getAdminPhone() {
+  return process.env.ADMIN_PHONE?.trim() || "";
+}
+
 function firebaseProjectId() {
   return (
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
@@ -115,10 +123,42 @@ export async function seedAdminAccount(): Promise<{
     error?: { message?: string };
   };
 
+  let idToken = data.idToken;
+  let userId = data.localId;
+  let created = true;
+
   if (data.error?.message === "EMAIL_EXISTS") {
-    return { created: false, email, reason: "already-exists" };
-  }
-  if (!res.ok || !data.idToken) {
+    const signedIn = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          returnSecureToken: true,
+        }),
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    const existing = (await signedIn.json()) as {
+      idToken?: string;
+      localId?: string;
+      error?: { message?: string };
+    };
+    if (!signedIn.ok || !existing.idToken) {
+      return {
+        created: false,
+        email,
+        reason:
+          existing.error?.message ||
+          "Admin email already exists with a different password.",
+      };
+    }
+    idToken = existing.idToken;
+    userId = existing.localId;
+    created = false;
+  } else if (!res.ok || !idToken) {
     return {
       created: false,
       email,
@@ -126,20 +166,45 @@ export async function seedAdminAccount(): Promise<{
     };
   }
 
+  const displayName = getAdminDisplayName();
   await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        idToken: data.idToken,
-        displayName: "MRA Admin",
+        idToken,
+        displayName,
       }),
       signal: AbortSignal.timeout(15000),
     },
   ).catch(() => undefined);
 
-  return { created: true, email };
+  const projectId = firebaseProjectId();
+  if (projectId && idToken && userId) {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fields: {
+            name: { stringValue: displayName },
+            email: { stringValue: email },
+            phone: { stringValue: getAdminPhone() },
+            role: { stringValue: "admin" },
+            createdAt: { integerValue: String(Date.now()) },
+          },
+        }),
+        signal: AbortSignal.timeout(15000),
+      },
+    ).catch(() => undefined);
+  }
+
+  return { created, email, reason: created ? undefined : "already-exists" };
 }
 
 async function staffIdToken(): Promise<string | null> {
@@ -260,27 +325,40 @@ function fromFirestoreDocument(doc: {
 async function saveToAdminSdk(record: PropertyEnquiryRecord): Promise<boolean> {
   const db = getAdminFirestore();
   if (!db) return false;
-  await db.collection(COLLECTION).doc(record.id).set(record);
+  const clean = Object.fromEntries(
+    Object.entries(record).filter(([, value]) => value !== undefined),
+  );
+  await db.collection(COLLECTION).doc(record.id).set(clean);
   return true;
 }
 
 async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boolean> {
   const projectId = firebaseProjectId();
+  if (!projectId) return false;
   const token = await staffIdToken();
-  if (!projectId || !token) return false;
 
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${encodeURIComponent(firebaseApiKey())}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+  const post = async (withAuth: boolean) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (withAuth && token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${encodeURIComponent(firebaseApiKey())}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(toFirestoreDocument(record)),
+        signal: AbortSignal.timeout(15000),
       },
-      body: JSON.stringify(toFirestoreDocument(record)),
-      signal: AbortSignal.timeout(15000),
-    },
-  );
+    );
+  };
+
+  let res = token ? await post(true) : await post(false);
+  if (!res.ok && token && (res.status === 401 || res.status === 403)) {
+    res = await post(false);
+  }
   if (!res.ok) {
     const body = await res.text();
     console.warn("[admin] firestore rest write failed", res.status, body);

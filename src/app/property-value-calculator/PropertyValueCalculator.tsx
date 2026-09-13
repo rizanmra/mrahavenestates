@@ -14,12 +14,9 @@ import {
 import { saveValuationLead } from "@/lib/valuation-leads";
 import { useAuth } from "@/components/AuthProvider";
 import {
-  formatPhoneForStorage,
   formatUkAddressLine,
   formatUkPostcode,
   validateEmail,
-  validateName,
-  validatePhone,
   validateUkPostcode,
 } from "@/lib/form-validation";
 
@@ -46,9 +43,7 @@ export function PropertyValueCalculator() {
   const [hasGarden, setHasGarden] = useState(true);
   const [hasParking, setHasParking] = useState(true);
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(true);
 
   const [pendingEstimate, setPendingEstimate] = useState<MarketEstimate | null>(
@@ -62,9 +57,9 @@ export function PropertyValueCalculator() {
   function unlockEstimate(
     result: MarketEstimate,
     lead: {
-      name: string;
+      name?: string;
       email: string;
-      phone: string;
+      phone?: string;
       address?: string;
       postcode?: string;
     },
@@ -77,9 +72,9 @@ export function PropertyValueCalculator() {
 
     if (!isAdmin) {
       saveValuationLead({
-        name: lead.name,
+        name: lead.name?.trim() || "Website visitor",
         email: lead.email,
-        phone: lead.phone,
+        phone: lead.phone?.trim() || "",
         address: displayAddress,
         postcode: displayPostcode,
         propertyType,
@@ -151,19 +146,14 @@ export function PropertyValueCalculator() {
     event.preventDefault();
     if (!pendingEstimate) return;
 
-    const nameError = validateName(name);
     const emailError = validateEmail(email);
-    const phoneError = validatePhone(phone, true);
-    const firstError = nameError || emailError || phoneError;
-    if (firstError) {
-      setError(firstError);
+    if (emailError) {
+      setError(emailError);
       return;
     }
 
     unlockEstimate(pendingEstimate, {
-      name: name.trim().replace(/\s+/g, " "),
       email: email.trim().toLowerCase(),
-      phone: formatPhoneForStorage(phone),
     });
   }
 
@@ -328,21 +318,12 @@ export function PropertyValueCalculator() {
               Unlock your market estimate
             </h2>
             <p className="mt-3 text-sm text-[color:var(--muted)]">
-              We&apos;ll show your indicative value instantly and can follow up
-              with a free, no-obligation valuation if you want a precise figure.
+              Enter a valid email to reveal your indicative value. We can follow
+              up with a free, no-obligation valuation if you want a precise
+              figure.
             </p>
           </div>
 
-          <label className="block">
-            <span className="text-sm text-white">Full name</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoComplete="name"
-              className={fieldClass}
-            />
-          </label>
           <label className="block">
             <span className="text-sm text-white">Email</span>
             <input
@@ -351,18 +332,7 @@ export function PropertyValueCalculator() {
               required
               type="email"
               autoComplete="email"
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm text-white">Phone</span>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              type="tel"
-              autoComplete="tel"
-              placeholder="07xxx xxx xxx"
+              placeholder="name@email.com"
               className={fieldClass}
             />
           </label>
@@ -420,8 +390,8 @@ export function PropertyValueCalculator() {
               UK postcode (and property details)
             </li>
             <li>
-              <span className="text-[color:var(--gold)]">2.</span> Leave soft
-              contact details to unlock the estimate
+              <span className="text-[color:var(--gold)]">2.</span> Enter your
+              email to unlock the estimate
             </li>
             <li>
               <span className="text-[color:var(--gold)]">3.</span> See an
@@ -431,7 +401,7 @@ export function PropertyValueCalculator() {
         </ol>
         {pendingEstimate && step === "optin" ? (
           <p className="mt-8 text-sm text-[color:var(--gold)]">
-            Your estimate is ready — unlock it with your details.
+            Your estimate is ready — unlock it with your email.
           </p>
         ) : null}
       </aside>

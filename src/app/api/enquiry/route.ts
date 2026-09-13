@@ -332,73 +332,63 @@ export async function POST(request: Request) {
     const cleanPhone = phone.trim()
       ? formatPhoneForStorage(phone)
       : "Not provided";
-    if (source === "property-enquiry" && property) {
-      try {
-        const enquiry = {
-          id: newPropertyEnquiryId(),
-          name: cleanName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          message,
-          property,
-          createdAt: Date.now(),
-          read: false,
-          status: "open" as const,
-        };
-        await savePropertyEnquiry(enquiry);
-        return NextResponse.json({ ok: true, deliveredTo: "admin", enquiry });
-      } catch (error) {
-        console.error("[enquiry] admin inbox", error);
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "Could not send your message just now. Please call us or try again.",
-          },
-          { status: 502 },
-        );
-      }
-    }
-
-    const to = inboxAddress();
     const reason = getContactReason(reasonId);
-    const payload: DeliveryInput = {
-      to,
-      name: cleanName,
-      email: cleanEmail,
-      phone: cleanPhone,
-      message,
-      source,
-      reasonLabel: reason.label,
-      reasonSubject: reason.subject,
-      property,
+    const listing = property ?? {
+      slug: `contact-${reasonId}`,
+      title: `Contact — ${reason.label}`,
+      location: "Website contact form",
+      price: "—",
+      status: "Contact",
+      type: "contact",
+      beds: 0,
+      baths: 0,
+      area: "—",
     };
 
-    if (smtpConfigured()) {
-      try {
-        await deliverViaSmtp(payload);
-        return NextResponse.json({ ok: true });
-      } catch (error) {
-        console.error("[enquiry] smtp", error);
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "Could not send your message just now. Please call us or try again.",
-          },
-          { status: 502 },
-        );
-      }
-    }
+    try {
+      const enquiry = {
+        id: newPropertyEnquiryId(),
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        message:
+          source === "contact" ? `[${reason.label}] ${message}` : message,
+        property: listing,
+        createdAt: Date.now(),
+        read: false,
+        status: "open" as const,
+      };
+      await savePropertyEnquiry(enquiry);
 
-    const delivered = await deliverViaFormSubmit(payload);
-    if (!delivered.ok) {
-      console.error("[enquiry]", delivered.status, delivered.body);
-      if ("activationRequired" in delivered && delivered.activationRequired) {
-        console.error(
-          "[enquiry] FormSubmit needs inbox activation (confirmation email). Prefer CONTACT_SMTP_* instead.",
-        );
+      const to = inboxAddress();
+      const payload: DeliveryInput = {
+        to,
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        message,
+        source,
+        reasonLabel: reason.label,
+        reasonSubject: reason.subject,
+        property,
+      };
+
+      if (smtpConfigured()) {
+        try {
+          await deliverViaSmtp(payload);
+        } catch (error) {
+          console.error("[enquiry] smtp", error);
+        }
+      } else if (source === "contact") {
+        const delivered = await deliverViaFormSubmit(payload);
+        if (!delivered.ok) {
+          console.error("[enquiry]", delivered.status, delivered.body);
+        }
       }
+
+      return NextResponse.json({ ok: true, deliveredTo: "admin", enquiry });
+    } catch (error) {
+      console.error("[enquiry] admin inbox", error);
       return NextResponse.json(
         {
           ok: false,
@@ -408,8 +398,6 @@ export async function POST(request: Request) {
         { status: 502 },
       );
     }
-
-    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[enquiry]", error);
     return NextResponse.json(

@@ -1,6 +1,6 @@
 /** Public admin helpers — safe to import from client components. */
 
-export const DEFAULT_ADMIN_EMAIL = "admin@mrahavenestates.co.uk";
+export const DEFAULT_ADMIN_EMAIL = "mrahavenestates@gmail.com";
 
 export function getPublicAdminEmail(): string {
   return (

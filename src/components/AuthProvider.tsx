@@ -20,6 +20,7 @@ import {
   firebaseLogout,
   firebaseRegister,
   firebaseToggleSave,
+  firebaseWatchEnquiries,
   watchFirebaseSession,
 } from "@/lib/firebase-auth";
 import { isAdminEmail } from "@/lib/admin";
@@ -29,6 +30,7 @@ import {
   applyEnquiryStatusUpdates,
   ensureDemoAdminAccount,
   filterOwnEnquiries,
+  normalizePortalEnquiries,
   getEnquiries,
   getSavedSlugs,
   getSession,
@@ -87,18 +89,20 @@ function mergeEnquiryUpdates(
 ): PortalEnquiry[] {
   if (updates.length === 0) return list;
   const byId = new Map(updates.map((item) => [item.sourceEnquiryId, item]));
-  return list.map((item) => {
-    const sourceId = item.sourceEnquiryId;
-    if (!sourceId) return item;
-    const update = byId.get(sourceId);
-    if (!update) return item;
-    return {
-      ...item,
-      status: update.status,
-      reply: update.reply,
-      repliedAt: update.repliedAt,
-    };
-  });
+  return normalizePortalEnquiries(
+    list.map((item) => {
+      const sourceId = item.sourceEnquiryId;
+      if (!sourceId) return item;
+      const update = byId.get(sourceId);
+      if (!update) return item;
+      return {
+        ...item,
+        status: update.status,
+        reply: update.reply,
+        repliedAt: update.repliedAt,
+      };
+    }),
+  );
 }
 
 type AuthContextValue = {
@@ -240,6 +244,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return undefined;
   }, [loadUserData, usingFirebase]);
 
+  useEffect(() => {
+    if (!ready || !session?.userId || !session.email) return;
+    if (isAdminEmail(session.email)) return;
+
+    let cancelled = false;
+    const userId = session.userId;
+    const email = session.email;
+
+    const applyList = async (list: PortalEnquiry[]) => {
+      const own = filterOwnEnquiries(userId, email, list);
+      const updates = await fetchEnquiryStatusUpdates(email, own);
+      if (cancelled) return;
+      setEnquiries(mergeEnquiryUpdates(own, updates));
+    };
+
+    const refresh = async () => {
+      try {
+        const list = usingFirebase
+          ? await firebaseGetEnquiries(userId)
+          : getEnquiries(userId, email);
+        await applyList(list);
+      } catch {
+        // Keep the last good list so a staff update cannot blank or crash the page.
+      }
+    };
+
+    void refresh();
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 4000);
+
+    const unsub = usingFirebase
+      ? firebaseWatchEnquiries(userId, (list) => {
+          void applyList(list);
+        })
+      : () => undefined;
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      unsub();
+    };
+  }, [ready, session?.email, session?.userId, usingFirebase]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -300,15 +348,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           summary,
           ownerUserId: session.userId,
           ownerEmail: session.email,
-          sourceEnquiryId: extra?.sourceEnquiryId,
-          status: extra?.status ?? "open",
+          status: extra?.status ?? "open" as const,
+          ...(extra?.sourceEnquiryId
+            ? { sourceEnquiryId: extra.sourceEnquiryId }
+            : {}),
         };
         if (usingFirebase) {
-          void firebaseAddEnquiry(session.userId, payload).then((list) =>
-            setEnquiries(
-              filterOwnEnquiries(session.userId, session.email, list),
-            ),
+          const optimistic: PortalEnquiry = {
+            ...payload,
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+          };
+          setEnquiries((prev) =>
+            filterOwnEnquiries(session.userId, session.email, [
+              optimistic,
+              ...prev,
+            ]),
           );
+          void firebaseAddEnquiry(session.userId, payload)
+            .then((list) => {
+              if (list.length === 0) return;
+              setEnquiries(
+                filterOwnEnquiries(session.userId, session.email, list),
+              );
+            })
+            .catch(() => {
+              // Inbox already saved; keep the optimistic account row.
+            });
           return;
         }
         addEnquiry(session.userId, payload, session.email);

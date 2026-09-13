@@ -26,7 +26,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == 'admin@mrahavenestates.co.uk';
+        && request.auth.token.email == 'mrahavenestates@gmail.com';
     }
 
     match /users/{userId} {
@@ -59,9 +59,32 @@ Project → Settings → Environment Variables → add all from `.env.example`:
 
 Redeploy after saving.
 
-## 3. Domain (Wix / registrar)
+## 3. Domains (Vercel project: mrahavenestates)
 
-Point DNS to Vercel (A/CNAME as shown in Vercel → Domains). Keep Wix for email if needed.
+Both domains are already attached on Vercel. Do not remove them.
+
+### Live now — GoDaddy `.com`
+
+- `mrahavenestates.com` → Production (redirects to `www`)
+- `www.mrahavenestates.com` → Production
+
+In GoDaddy → **mrahavenestates.com** → DNS, set:
+
+| Type | Name | Value |
+|------|------|--------|
+| **A** | `@` | `216.198.79.1` |
+| **CNAME** | `www` | `9d9bd12c71a4aab4.vercel-dns-017.com` |
+
+Remove any old A / CNAME / parking records that conflict. Wait 5–30 minutes. Vercel will flip from Invalid Configuration to Valid.
+
+### Later — broker `.co.uk` (keep attached, do not delete)
+
+- `mrahavenestates.co.uk` is already on the project
+- `www.mrahavenestates.co.uk` was added with it
+
+When the broker transfer finishes, point that registrar’s DNS at the same Vercel records (A `@` → `216.198.79.1`, plus the CNAME shown on Vercel for `www`). Until then, leave the `.co.uk` entries as Invalid Configuration.
+
+Site is already live at https://mrahavenestates.vercel.app even before custom DNS completes.
 
 ## 4. Smoke test after deploy
 

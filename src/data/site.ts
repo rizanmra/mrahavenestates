@@ -33,7 +33,6 @@ export const navLinks = [
 export const services = [
   {
     title: "Sales",
-    price: "From £1",
     description:
       "Expert guidance from valuation to completion. We market your home with premium photography and targeted reach.",
     href: "/sales",
@@ -42,7 +41,6 @@ export const services = [
   },
   {
     title: "Lettings",
-    price: "From £100",
     description:
       "Landlord and tenant services across Bradford and West Yorkshire. Managed lettings with full compliance.",
     href: "/lettings",
@@ -51,7 +49,6 @@ export const services = [
   },
   {
     title: "Removal Services",
-    price: "From £50",
     description:
       "Licensed removals with professional packing. From studio flats to full family relocations.",
     href: "/removal-services",

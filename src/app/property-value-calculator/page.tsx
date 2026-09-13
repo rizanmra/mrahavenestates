@@ -29,14 +29,14 @@ export default function PropertyValueCalculatorPage() {
     <>
       <PageHero
         title="How much is my house worth?"
-        subtitle="Enter your address for a free estimated market value — then unlock it with a soft opt-in."
+        subtitle="Enter your address for a free estimated market value — then unlock it with your email."
       />
       <section className="px-6 py-16 lg:px-10">
         <p className="mx-auto max-w-3xl text-center text-lg leading-relaxed text-[color:var(--muted)]">
           Looking for a rough <strong>estimated market value</strong>? Enter your
           property address and details. We&apos;ll give you an indicative range
-          for Bradford &amp; West Yorkshire. Leave your contact details to unlock
-          the figure — a soft opt-in so we can help if you want a free in-person
+          for Bradford &amp; West Yorkshire. Enter your email to unlock the
+          figure — a soft opt-in so we can help if you want a free in-person
           valuation.
         </p>
 

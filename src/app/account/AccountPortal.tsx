@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { site } from "@/data/site";
-import { consumeNewSignupWelcome } from "@/lib/portal";
+import {
+  consumeNewSignupWelcome,
+  filterOwnEnquiries,
+  formatEnquiryWhen,
+} from "@/lib/portal";
 
 export function AccountPortal() {
   const router = useRouter();
   const { ready, session, logout, savedSlugs, enquiries, isAdmin } = useAuth();
+  const [isNewSignup] = useState(() => consumeNewSignupWelcome());
 
   useEffect(() => {
     if (ready && !session) {
@@ -29,18 +34,12 @@ export function AccountPortal() {
   }
 
   const savedCount = savedSlugs.length;
-  const myEnquiries = enquiries.filter((item) => {
-    if (item.ownerUserId) return item.ownerUserId === session.userId;
-    if (item.ownerEmail) {
-      return (
-        item.ownerEmail.trim().toLowerCase() ===
-        session.email.trim().toLowerCase()
-      );
-    }
-    return true;
-  });
+  const myEnquiries = filterOwnEnquiries(
+    session.userId,
+    session.email,
+    enquiries,
+  );
 
-  const [isNewSignup] = useState(() => consumeNewSignupWelcome());
   const fullName = session.name.trim() || "Client";
   const greeting = isNewSignup
     ? `Welcome, ${fullName}`
@@ -146,42 +145,46 @@ export function AccountPortal() {
             </p>
           ) : (
             <ul className="mt-6 space-y-4">
-              {myEnquiries.map((enquiry) => (
-                <li
-                  key={enquiry.id}
-                  className="border border-[color:var(--line)] p-4"
-                >
-                  <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
-                    {enquiry.type}
-                    {enquiry.status === "answered"
-                      ? " · Answered"
-                      : enquiry.status === "closed"
-                        ? " · Closed"
+              {myEnquiries.map((enquiry) => {
+                const created = formatEnquiryWhen(enquiry.createdAt);
+                const replied = formatEnquiryWhen(enquiry.repliedAt);
+                return (
+                  <li
+                    key={enquiry.id}
+                    className="border border-[color:var(--line)] p-4"
+                  >
+                    <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
+                      {enquiry.type}
+                      {enquiry.status === "answered"
+                        ? " · Answered"
+                        : enquiry.status === "closed"
+                          ? " · Closed"
+                          : ""}
+                    </p>
+                    <p className="mt-2 text-white">{enquiry.summary}</p>
+                    {enquiry.reply ? (
+                      <div className="mt-3 border-t border-[color:var(--line)] pt-3">
+                        <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
+                          {enquiry.status === "closed"
+                            ? "Update from MRA Haven Estates"
+                            : "Reply from MRA Haven Estates"}
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-white/90">
+                          {enquiry.reply}
+                        </p>
+                      </div>
+                    ) : null}
+                    <p className="mt-2 text-xs text-[color:var(--muted)]">
+                      {created}
+                      {replied
+                        ? enquiry.status === "closed"
+                          ? ` · Closed ${replied}`
+                          : ` · Replied ${replied}`
                         : ""}
-                  </p>
-                  <p className="mt-2 text-white">{enquiry.summary}</p>
-                  {enquiry.reply ? (
-                    <div className="mt-3 border-t border-[color:var(--line)] pt-3">
-                      <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
-                        {enquiry.status === "closed"
-                          ? "Update from MRA Haven Estates"
-                          : "Reply from MRA Haven Estates"}
-                      </p>
-                      <p className="mt-2 whitespace-pre-wrap text-white/90">
-                        {enquiry.reply}
-                      </p>
-                    </div>
-                  ) : null}
-                  <p className="mt-2 text-xs text-[color:var(--muted)]">
-                    {new Date(enquiry.createdAt).toLocaleString("en-GB")}
-                    {enquiry.repliedAt
-                      ? enquiry.status === "closed"
-                        ? ` · Closed ${new Date(enquiry.repliedAt).toLocaleString("en-GB")}`
-                        : ` · Replied ${new Date(enquiry.repliedAt).toLocaleString("en-GB")}`
-                      : ""}
-                  </p>
-                </li>
-              ))}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

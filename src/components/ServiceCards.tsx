@@ -26,7 +26,6 @@ export function ServiceCards() {
             <div className="flex flex-col p-8 text-center">
               <h3 className="font-display text-4xl text-white">{service.title}</h3>
               <div className="gold-line my-6" />
-              <p className="text-2xl text-white">{service.price}</p>
               <p className="mt-4 flex-1 text-sm leading-relaxed text-[color:var(--muted)]">
                 {service.description}
               </p>

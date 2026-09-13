@@ -20,8 +20,53 @@ export type Property = {
   createdAt: number;
 };
 
-/** Seed catalogue used when the local listings store is empty. Rent-only for public clients. */
+/** Seed catalogue used when the local listings store is empty. */
 export const seedProperties: Property[] = [
+  {
+    slug: "heaton-victorian-semi",
+    title: "Heaton Victorian Semi",
+    location: "Bradford, BD9",
+    price: "£285,000",
+    beds: 3,
+    baths: 2,
+    area: "1,250 sq ft",
+    type: "sale",
+    status: "For Sale",
+    summary:
+      "Period semi with original features, a refurbished kitchen, and a south-facing garden close to Heaton Park.",
+    image: imageLibrary.pageSales,
+    createdAt: Date.UTC(2026, 8, 12),
+  },
+  {
+    slug: "saltaire-townhouse",
+    title: "Saltaire Townhouse",
+    location: "Shipley, BD18",
+    price: "£325,000",
+    beds: 4,
+    baths: 2,
+    area: "1,480 sq ft",
+    type: "sale",
+    status: "For Sale",
+    summary:
+      "Stone-built townhouse near the World Heritage village, with two reception rooms and off-street parking.",
+    image: imageLibrary.pageBuy,
+    createdAt: Date.UTC(2026, 8, 11),
+  },
+  {
+    slug: "ilkley-family-home",
+    title: "Ilkley Family Home",
+    location: "Ilkley, LS29",
+    price: "£475,000",
+    beds: 5,
+    baths: 3,
+    area: "2,100 sq ft",
+    type: "sale",
+    status: "For Sale",
+    summary:
+      "Detached family home with open-plan living, a landscaped garden, and easy access to Ilkley Moor and the station.",
+    image: imageLibrary.heroExterior,
+    createdAt: Date.UTC(2026, 8, 9),
+  },
   {
     slug: "city-centre-apartment",
     title: "City Centre Apartment",

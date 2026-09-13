@@ -9,13 +9,14 @@ import {
 import {
   doc,
   getDoc,
+  onSnapshot,
   setDoc,
 } from "firebase/firestore";
 import { isAdminEmail } from "@/lib/admin";
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase";
 import { formatPhoneForStorage } from "@/lib/form-validation";
 import type { PortalEnquiry, PortalSession } from "@/lib/portal";
-import { filterOwnEnquiries } from "@/lib/portal";
+import { filterOwnEnquiries, normalizePortalEnquiries } from "@/lib/portal";
 import type { PropertyEnquiryRecord } from "@/lib/property-enquiry";
 
 const FIRESTORE_TIMEOUT_MS = 10000;
@@ -38,6 +39,28 @@ async function withTimeout<T>(
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+/** Firestore rejects `undefined` field values. */
+function omitUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined),
+  ) as T;
+}
+
+function enquiryForFirestore(enquiry: PortalEnquiry): Record<string, string | number> {
+  return omitUndefined({
+    id: enquiry.id,
+    type: enquiry.type,
+    summary: enquiry.summary,
+    createdAt: enquiry.createdAt,
+    ownerUserId: enquiry.ownerUserId,
+    ownerEmail: enquiry.ownerEmail,
+    status: enquiry.status,
+    reply: enquiry.reply,
+    repliedAt: enquiry.repliedAt,
+    sourceEnquiryId: enquiry.sourceEnquiryId,
+  });
 }
 
 function authErrorMessage(error: unknown, fallback: string): string {
@@ -198,14 +221,17 @@ export async function firebaseRegister(input: {
     // Phone is not stored on Firebase Auth — persist it on the Firestore profile.
     try {
       await withTimeout(
-        setDoc(doc(db, "users", result.user.uid), {
-          name: displayName,
-          email,
-          phone,
-          savedProperties: [],
-          enquiries: [],
-          createdAt: Date.now(),
-        }),
+        setDoc(
+          doc(db, "users", result.user.uid),
+          omitUndefined({
+            name: displayName,
+            email,
+            phone,
+            savedProperties: [],
+            enquiries: [],
+            createdAt: Date.now(),
+          }),
+        ),
         FIRESTORE_TIMEOUT_MS,
         FIRESTORE_SETUP_ERROR,
       );
@@ -253,7 +279,10 @@ export async function firebaseCreatePropertyEnquiry(
   if (!db) return;
   try {
     await withTimeout(
-      setDoc(doc(db, "propertyEnquiries", enquiry.id), enquiry),
+      setDoc(
+        doc(db, "propertyEnquiries", enquiry.id),
+        omitUndefined({ ...enquiry }),
+      ),
       FIRESTORE_TIMEOUT_MS,
       FIRESTORE_SETUP_ERROR,
     );
@@ -375,24 +404,52 @@ export async function firebaseGetEnquiries(
     const snap = await getDoc(doc(db, "users", userId));
     if (!snap.exists()) return [];
     const data = snap.data();
-    const enquiries = data.enquiries;
-    if (!Array.isArray(enquiries)) return [];
     const email = String(data.email ?? auth.currentUser.email ?? "")
       .trim()
       .toLowerCase();
-    const parsed = enquiries.filter(
-      (item): item is PortalEnquiry =>
-        typeof item === "object" &&
-        item !== null &&
-        "id" in item &&
-        "type" in item &&
-        "summary" in item &&
-        "createdAt" in item,
+    return filterOwnEnquiries(
+      userId,
+      email,
+      normalizePortalEnquiries(data.enquiries),
     );
-    return filterOwnEnquiries(userId, email, parsed);
   } catch {
     return [];
   }
+}
+
+export function firebaseWatchEnquiries(
+  userId: string,
+  onChange: (list: PortalEnquiry[]) => void,
+): () => void {
+  const auth = getFirebaseAuth();
+  const db = getFirestoreDb();
+  if (!db || !auth?.currentUser || auth.currentUser.uid !== userId) {
+    return () => undefined;
+  }
+
+  return onSnapshot(
+    doc(db, "users", userId),
+    (snap) => {
+      if (!snap.exists()) {
+        onChange([]);
+        return;
+      }
+      const data = snap.data();
+      const email = String(data.email ?? auth.currentUser?.email ?? "")
+        .trim()
+        .toLowerCase();
+      onChange(
+        filterOwnEnquiries(
+          userId,
+          email,
+          normalizePortalEnquiries(data.enquiries),
+        ),
+      );
+    },
+    () => {
+      // Keep the last good list if a snapshot fails mid-update.
+    },
+  );
 }
 
 export async function firebaseAddEnquiry(
@@ -403,26 +460,38 @@ export async function firebaseAddEnquiry(
   const db = getFirestoreDb();
   if (!db) return [];
   if (!auth?.currentUser || auth.currentUser.uid !== userId) return [];
+  const ownerEmail = (
+    enquiry.ownerEmail ||
+    auth.currentUser.email ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
   const next: PortalEnquiry = {
-    ...enquiry,
-    ownerUserId: enquiry.ownerUserId || userId,
-    ownerEmail:
-      (
-        enquiry.ownerEmail ||
-        auth.currentUser.email ||
-        ""
-      )
-        .trim()
-        .toLowerCase() || undefined,
     id: crypto.randomUUID(),
     createdAt: Date.now(),
+    type: enquiry.type,
+    summary: enquiry.summary,
+    ownerUserId: enquiry.ownerUserId || userId,
+    status: enquiry.status ?? "open",
+    ...(ownerEmail ? { ownerEmail } : {}),
+    ...(enquiry.reply ? { reply: enquiry.reply } : {}),
+    ...(enquiry.repliedAt != null ? { repliedAt: enquiry.repliedAt } : {}),
+    ...(enquiry.sourceEnquiryId
+      ? { sourceEnquiryId: enquiry.sourceEnquiryId }
+      : {}),
   };
   const current = await firebaseGetEnquiries(userId);
   const enquiries = [next, ...current].slice(0, 20);
-  await setDoc(
-    doc(db, "users", userId),
-    { enquiries },
-    { merge: true },
-  );
+  try {
+    await setDoc(
+      doc(db, "users", userId),
+      { enquiries: enquiries.map(enquiryForFirestore) },
+      { merge: true },
+    );
+  } catch (error) {
+    console.warn("[firebase] could not save enquiry to account", error);
+    return [next, ...current].slice(0, 20);
+  }
   return enquiries;
 }

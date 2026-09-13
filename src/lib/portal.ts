@@ -35,17 +35,111 @@ export type PortalEnquiry = {
   sourceEnquiryId?: string;
 };
 
+/** Convert Firestore timestamps / ISO strings into epoch ms. */
+export function toEpochMs(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber) && asNumber > 0) return asNumber;
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+  if (value && typeof value === "object") {
+    const rec = value as { toMillis?: () => number; seconds?: number };
+    if (typeof rec.toMillis === "function") {
+      try {
+        const ms = rec.toMillis();
+        return Number.isFinite(ms) ? ms : null;
+      } catch {
+        return null;
+      }
+    }
+    if (typeof rec.seconds === "number") {
+      return rec.seconds * 1000;
+    }
+  }
+  return null;
+}
+
+export function formatEnquiryWhen(value: unknown): string {
+  const ms = toEpochMs(value);
+  if (ms == null) return "";
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB");
+}
+
+export function normalizePortalEnquiry(raw: unknown): PortalEnquiry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as Record<string, unknown>;
+  const id = typeof item.id === "string" ? item.id.trim() : "";
+  const summary = typeof item.summary === "string" ? item.summary : "";
+  const createdAt = toEpochMs(item.createdAt);
+  const type = item.type;
+  if (
+    !id ||
+    !summary ||
+    createdAt == null ||
+    (type !== "contact" && type !== "valuation" && type !== "property")
+  ) {
+    return null;
+  }
+
+  const ownerEmail =
+    typeof item.ownerEmail === "string"
+      ? item.ownerEmail.trim().toLowerCase()
+      : "";
+  const ownerUserId =
+    typeof item.ownerUserId === "string" ? item.ownerUserId : undefined;
+  const status =
+    item.status === "answered" ||
+    item.status === "closed" ||
+    item.status === "open"
+      ? item.status
+      : "open";
+  const reply = typeof item.reply === "string" ? item.reply : undefined;
+  const repliedAt = toEpochMs(item.repliedAt) ?? undefined;
+  const sourceEnquiryId =
+    typeof item.sourceEnquiryId === "string"
+      ? item.sourceEnquiryId
+      : undefined;
+
+  return {
+    id,
+    type,
+    summary,
+    createdAt,
+    ownerUserId,
+    ownerEmail: ownerEmail || undefined,
+    status,
+    reply,
+    repliedAt,
+    sourceEnquiryId,
+  };
+}
+
+export function normalizePortalEnquiries(list: unknown): PortalEnquiry[] {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(normalizePortalEnquiry)
+    .filter((item): item is PortalEnquiry => item !== null);
+}
+
 /** Keep only enquiries that belong to this account (legacy items without owner are kept). */
 export function filterOwnEnquiries(
   userId: string,
   email: string,
-  list: PortalEnquiry[],
+  list: unknown,
 ): PortalEnquiry[] {
   const normalizedEmail = email.trim().toLowerCase();
-  return list.filter((item) => {
+  return normalizePortalEnquiries(list).filter((item) => {
     if (item.ownerUserId) return item.ownerUserId === userId;
     if (item.ownerEmail) {
-      return item.ownerEmail.trim().toLowerCase() === normalizedEmail;
+      return item.ownerEmail === normalizedEmail;
     }
     // Legacy rows written before ownership fields — already stored under this userId key.
     return true;
@@ -282,7 +376,7 @@ export function applyEnquiryStatusUpdates(
   if (updates.length === 0) return getEnquiries(userId);
   const byId = new Map(updates.map((item) => [item.sourceEnquiryId, item]));
   let changed = false;
-  const next = getEnquiries(userId).map((item) => {
+  const next = normalizePortalEnquiries(getEnquiries(userId)).map((item) => {
     // Never invent enquiries from staff updates — only patch this user's rows.
     const sourceId = item.sourceEnquiryId;
     if (!sourceId) return item;

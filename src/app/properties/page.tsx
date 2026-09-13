@@ -6,7 +6,7 @@ import { getPropertiesByType } from "@/lib/listings-store";
 import { syncRemovedPropertiesFromCatalogue } from "@/lib/purge-property-saves";
 
 export const metadata: Metadata = {
-  title: "Properties to rent",
+  title: "Properties",
 };
 
 type PropertiesPageProps = {
@@ -25,9 +25,8 @@ export default async function PropertiesPage({
   await syncRemovedPropertiesFromCatalogue();
 
   const params = await searchParams;
-  // Public catalogue is rent-only for clients.
-  const type: PropertyType =
-    params.type === "sale" ? "sale" : "rent";
+  const type: PropertyType = params.type === "sale" ? "sale" : "rent";
+  const forSale = type === "sale";
 
   let results = await getPropertiesByType(type);
 
@@ -54,12 +53,14 @@ export default async function PropertiesPage({
       <section className="px-6 py-12 lg:px-10">
         <div className="mx-auto max-w-6xl">
           <h1 className="font-display text-5xl text-white">
-            Properties to rent
+            {forSale ? "Properties for sale" : "Properties to rent"}
           </h1>
           <p className="mt-4 text-[color:var(--muted)]">
             {locationLabel
               ? `Results for “${locationLabel}”`
-              : "Homes available to rent across Bradford and West Yorkshire"}
+              : forSale
+                ? "Homes for sale across Bradford and West Yorkshire"
+                : "Homes available to rent across Bradford and West Yorkshire"}
           </p>
 
           {results.length === 0 ? (
@@ -67,7 +68,10 @@ export default async function PropertiesPage({
               {locationLabel
                 ? `There's no property available at “${locationLabel}”.`
                 : "There's no property available right now."}{" "}
-              <Link href="/contact?reason=lettings" className="text-[color:var(--gold)]">
+              <Link
+                href={forSale ? "/contact?reason=sales" : "/contact?reason=lettings"}
+                className="text-[color:var(--gold)]"
+              >
                 Contact us
               </Link>{" "}
               and we will help you find the right home.

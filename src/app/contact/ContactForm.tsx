@@ -93,7 +93,11 @@ export default function ContactForm() {
           allowMissingPhone: loggedIn,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        enquiry?: { id?: string };
+      };
       if (!res.ok || !data.ok) {
         setError(data.error || "Could not send your message. Please try again.");
         return;
@@ -103,7 +107,10 @@ export default function ContactForm() {
       const summary = loggedIn
         ? `${reasonLabel}: ${message}`
         : `${reasonLabel}: ${message} — ${name}`;
-      recordEnquiry("contact", summary);
+      recordEnquiry("contact", summary, {
+        sourceEnquiryId: data.enquiry?.id,
+        status: "open",
+      });
       setSent(true);
     } catch {
       setError("Could not send your message. Please try again.");
@@ -122,8 +129,8 @@ export default function ContactForm() {
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
               Get in touch with our team for sales, lettings, removals or
-              general enquiries. Messages from this form are emailed to the
-              office with your selected reason in the subject line.
+              general enquiries. Messages go to our staff inbox with your
+              selected reason, so we can reply from the office.
             </p>
             <p className="mt-4 text-sm text-[color:var(--muted)]">
               Asking about a specific listing? Use{" "}
