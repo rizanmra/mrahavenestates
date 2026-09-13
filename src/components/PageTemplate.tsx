@@ -12,7 +12,7 @@ export function PageImageHero({
   image: string;
 }) {
   return (
-    <section className="relative min-h-[40vh] overflow-hidden pt-28">
+    <section className="page-offset relative min-h-[40vh] overflow-hidden">
       <Image
         src={image}
         alt=""
@@ -40,8 +40,8 @@ export function PageHero({
   subtitle?: string;
 }) {
   return (
-    <section className="border-b border-[color:var(--line)] bg-[color:var(--navy-light)] px-6 py-20 pt-36 lg:px-10">
-      <div className="mx-auto max-w-4xl text-center">
+    <section className="page-offset border-b border-[color:var(--line)] bg-[color:var(--navy-light)] px-6 pb-20 lg:px-10">
+      <div className="mx-auto max-w-4xl pt-6 text-center">
         <h1 className="font-display text-5xl text-white md:text-6xl">{title}</h1>
         {subtitle ? (
           <p className="mt-6 text-lg text-[color:var(--muted)]">{subtitle}</p>
@@ -55,17 +55,27 @@ export function InfoBody({
   children,
   cta,
   bullets,
+  align = "left",
 }: {
   children: ReactNode;
   cta?: { label: string; href: string };
   bullets?: string[];
+  align?: "left" | "center";
 }) {
   return (
     <section className="px-6 py-16 lg:px-10">
-      <div className="mx-auto max-w-3xl space-y-6 text-lg leading-relaxed text-[color:var(--muted)]">
+      <div
+        className={`mx-auto max-w-3xl space-y-6 text-lg leading-relaxed text-[color:var(--muted)] ${
+          align === "center" ? "text-center" : ""
+        }`}
+      >
         {children}
         {bullets && bullets.length > 0 ? (
-          <ul className="space-y-3 pt-2">
+          <ul
+            className={`space-y-3 pt-2 ${
+              align === "center" ? "mx-auto inline-block text-left" : ""
+            }`}
+          >
             {bullets.map((item) => (
               <li key={item} className="flex gap-3">
                 <span
@@ -78,7 +88,10 @@ export function InfoBody({
           </ul>
         ) : null}
         {cta ? (
-          <Link href={cta.href} className="btn-gold mt-8 inline-block px-8 py-3 text-sm uppercase">
+          <Link
+            href={cta.href}
+            className="btn-gold mt-8 inline-block px-8 py-3 text-sm uppercase"
+          >
             {cta.label}
           </Link>
         ) : null}

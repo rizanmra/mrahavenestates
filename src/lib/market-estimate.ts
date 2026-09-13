@@ -60,7 +60,15 @@ const conditionMultiplier: Record<PropertyCondition, number> = {
 
 function extractOutcode(postcode: string): string {
   const cleaned = postcode.trim().toUpperCase().replace(/\s+/g, " ");
-  const match = cleaned.match(/^([A-Z]{1,2}\d{1,2})/);
+  if (cleaned.includes(" ")) {
+    return cleaned.split(" ")[0] ?? "";
+  }
+  // Prefer outward code from a full compacted postcode (last 3 = inward).
+  const compact = cleaned.replace(/[^A-Z0-9]/g, "");
+  if (compact.length >= 5) {
+    return compact.slice(0, -3);
+  }
+  const match = cleaned.match(/^([A-Z]{1,2}\d[A-Z\d]?)/);
   return match?.[1] ?? "";
 }
 

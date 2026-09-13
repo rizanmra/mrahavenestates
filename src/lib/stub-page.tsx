@@ -13,7 +13,7 @@ export function makeStubPage({ title, description }: StubPageProps) {
     return (
       <>
         <PageHero title={title} subtitle={description} />
-        <InfoBody cta={{ label: "Contact us", href: "/contact" }}>
+        <InfoBody cta={{ label: "Contact us", href: "/contact?reason=general" }}>
           <p>Full content for this section is coming soon. Contact our team for immediate help.</p>
         </InfoBody>
       </>

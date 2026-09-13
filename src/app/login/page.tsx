@@ -4,7 +4,7 @@ import { LoginPortal } from "./LoginPortal";
 
 export const metadata: Metadata = {
   title: "Login",
-  description: "Sign in or register for the MRA Haven Estates client portal.",
+  description: "Login or register for the MRA Haven Estates client portal.",
 };
 
 export default function LoginPage() {

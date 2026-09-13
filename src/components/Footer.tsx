@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { NewsletterForm } from "@/components/NewsletterForm";
@@ -22,7 +24,7 @@ export function Footer() {
     <footer className="border-t border-[color:var(--line)] bg-[color:var(--navy)]">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 py-16 lg:grid-cols-3 lg:px-10">
         <div>
-          <BrandLogo size="footer" showWordmark />
+          <BrandLogo href="/" size="footer" showWordmark />
           <h2 className="font-display mt-8 text-3xl text-white">
             Connect with Us
           </h2>
@@ -53,12 +55,22 @@ export function Footer() {
             <br />
             {site.address.postcode}
           </address>
-          <div className="mt-6 flex gap-3">
-            <SocialIcon label="Facebook" href={site.social.facebook} />
-            <SocialIcon label="Instagram" href={site.social.instagram} />
-            <SocialIcon label="X" href={site.social.x} />
-            <SocialIcon label="TikTok" href={site.social.tiktok} />
-          </div>
+          {Object.entries(site.social).some(([, href]) => href) ? (
+            <div className="mt-6 flex gap-3">
+              {site.social.facebook ? (
+                <SocialIcon label="Facebook" href={site.social.facebook} />
+              ) : null}
+              {site.social.instagram ? (
+                <SocialIcon label="Instagram" href={site.social.instagram} />
+              ) : null}
+              {site.social.x ? (
+                <SocialIcon label="X" href={site.social.x} />
+              ) : null}
+              {site.social.tiktok ? (
+                <SocialIcon label="TikTok" href={site.social.tiktok} />
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div>

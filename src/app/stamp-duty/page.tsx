@@ -14,7 +14,7 @@ export default function StampDutyPage() {
         title="Stamp Duty Calculator"
         subtitle="A quick England & Northern Ireland SDLT estimate."
       />
-      <InfoBody cta={{ label: "Speak to an advisor", href: "/contact" }}>
+      <InfoBody cta={{ label: "Speak to an advisor", href: "/contact?reason=stamp-duty" }}>
         <p>
           Use this guide to estimate Stamp Duty Land Tax on a residential
           purchase. Rates can change and additional surcharges may apply.

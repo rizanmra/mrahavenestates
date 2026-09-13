@@ -7,21 +7,111 @@ import {
   type User,
 } from "firebase/auth";
 import {
-  arrayRemove,
-  arrayUnion,
   doc,
   getDoc,
   setDoc,
-  updateDoc,
 } from "firebase/firestore";
+import { isAdminEmail } from "@/lib/admin";
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase";
+import { formatPhoneForStorage } from "@/lib/form-validation";
 import type { PortalEnquiry, PortalSession } from "@/lib/portal";
+import { filterOwnEnquiries } from "@/lib/portal";
+import type { PropertyEnquiryRecord } from "@/lib/property-enquiry";
 
-function toSession(user: User): PortalSession {
+const FIRESTORE_TIMEOUT_MS = 10000;
+const FIRESTORE_SETUP_ERROR =
+  "Cloud Firestore is not set up (or blocked). In Firebase Console → Build → Firestore Database → Create database, then paste the rules from GO_LIVE.md.";
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function authErrorMessage(error: unknown, fallback: string): string {
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String((error as { code: string }).code)
+      : "";
+
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+    case "auth/invalid-email":
+      return "Incorrect email or password.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    default:
+      return fallback;
+  }
+}
+
+async function fetchProfile(
+  userId: string,
+): Promise<{ name: string | null; phone: string | null }> {
+  const db = getFirestoreDb();
+  if (!db) return { name: null, phone: null };
+  try {
+    const snap = await withTimeout(
+      getDoc(doc(db, "users", userId)),
+      FIRESTORE_TIMEOUT_MS,
+      FIRESTORE_SETUP_ERROR,
+    );
+    if (!snap.exists()) return { name: null, phone: null };
+    const data = snap.data();
+    const name =
+      typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
+    const phone =
+      typeof data.phone === "string" && data.phone.trim()
+        ? data.phone.trim()
+        : null;
+    return { name, phone };
+  } catch (error) {
+    if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
+      return { name: null, phone: null };
+    }
+    return { name: null, phone: null };
+  }
+}
+
+async function toSession(user: User): Promise<PortalSession> {
+  const profile = await fetchProfile(user.uid);
+  const name = profile.name || user.displayName?.trim() || "Client";
   return {
     userId: user.uid,
     email: user.email ?? "",
-    name: user.displayName || user.email?.split("@")[0] || "Client",
+    name,
+    // Phone lives only in Firestore (not Firebase Auth email/password).
+    phone: profile.phone || undefined,
+  };
+}
+
+/** Refresh name/phone from Firestore onto an existing session. */
+export async function firebaseEnrichSession(
+  session: PortalSession,
+): Promise<PortalSession> {
+  const profile = await fetchProfile(session.userId);
+  return {
+    ...session,
+    name: profile.name || session.name,
+    phone: profile.phone || undefined,
   };
 }
 
@@ -39,7 +129,21 @@ export function watchFirebaseSession(
   }
 
   return onAuthStateChanged(auth, (user) => {
-    onChange(user ? toSession(user) : null);
+    if (!user) {
+      onChange(null);
+      return;
+    }
+    void toSession(user)
+      .then(onChange)
+      .catch(() => {
+        // Still prefer Firestore on retry via enrich; Auth has no phone field.
+        onChange({
+          userId: user.uid,
+          email: user.email ?? "",
+          name: user.displayName?.trim() || "Client",
+          phone: undefined,
+        });
+      });
   });
 }
 
@@ -56,9 +160,9 @@ export async function firebaseLogin(
       email.trim().toLowerCase(),
       password,
     );
-    return toSession(result.user);
-  } catch {
-    throw new Error("Incorrect email or password.");
+    return await toSession(result.user);
+  } catch (error) {
+    throw new Error(authErrorMessage(error, "Incorrect email or password."));
   }
 }
 
@@ -76,31 +180,85 @@ export async function firebaseRegister(input: {
     throw new Error("Password must be at least 8 characters.");
   }
 
+  if (isAdminEmail(input.email)) {
+    throw new Error("This email is reserved for staff. Please log in instead.");
+  }
+
   try {
     const result = await createUserWithEmailAndPassword(
       auth,
       input.email.trim().toLowerCase(),
       input.password,
     );
-    await updateProfile(result.user, { displayName: input.name.trim() });
-    await setDoc(doc(db, "users", result.user.uid), {
-      name: input.name.trim(),
-      email: input.email.trim().toLowerCase(),
-      phone: input.phone.trim(),
-      savedProperties: [],
-      enquiries: [],
-      createdAt: Date.now(),
-    });
-    return toSession(result.user);
-  } catch (error) {
-    const code =
-      typeof error === "object" && error && "code" in error
-        ? String((error as { code: string }).code)
-        : "";
-    if (code === "auth/email-already-in-use") {
-      throw new Error("An account with this email already exists.");
+    const displayName = input.name.trim();
+    const phone = formatPhoneForStorage(input.phone);
+    const email = input.email.trim().toLowerCase();
+    await updateProfile(result.user, { displayName });
+
+    // Phone is not stored on Firebase Auth — persist it on the Firestore profile.
+    try {
+      await withTimeout(
+        setDoc(doc(db, "users", result.user.uid), {
+          name: displayName,
+          email,
+          phone,
+          savedProperties: [],
+          enquiries: [],
+          createdAt: Date.now(),
+        }),
+        FIRESTORE_TIMEOUT_MS,
+        FIRESTORE_SETUP_ERROR,
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
+        throw new Error(FIRESTORE_SETUP_ERROR);
+      }
+      throw new Error(
+        "Account created, but your phone could not be saved. Check Firestore is set up, then try registering again or contact support.",
+      );
     }
-    throw new Error("Unable to create account. Please try again.");
+
+    await result.user.reload();
+    const session = await toSession(result.user);
+    return {
+      ...session,
+      name: displayName,
+      phone,
+    };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === FIRESTORE_SETUP_ERROR ||
+        error.message.includes("phone could not be saved"))
+    ) {
+      throw error;
+    }
+    throw new Error(
+      authErrorMessage(error, "Unable to create account. Please try again."),
+    );
+  }
+}
+
+export async function firebaseGetIdToken(): Promise<string | null> {
+  const auth = getFirebaseAuth();
+  const user = auth?.currentUser;
+  if (!user) return null;
+  return user.getIdToken();
+}
+
+export async function firebaseCreatePropertyEnquiry(
+  enquiry: PropertyEnquiryRecord,
+): Promise<void> {
+  const db = getFirestoreDb();
+  if (!db) return;
+  try {
+    await withTimeout(
+      setDoc(doc(db, "propertyEnquiries", enquiry.id), enquiry),
+      FIRESTORE_TIMEOUT_MS,
+      FIRESTORE_SETUP_ERROR,
+    );
+  } catch {
+    // Server inbox is the source of truth; cloud copy is best-effort.
   }
 }
 
@@ -113,11 +271,24 @@ export async function firebaseLogout(): Promise<void> {
 export async function firebaseGetSavedSlugs(userId: string): Promise<string[]> {
   const db = getFirestoreDb();
   if (!db) return [];
-  const snap = await getDoc(doc(db, "users", userId));
-  if (!snap.exists()) return [];
-  const data = snap.data();
-  const saved = data.savedProperties;
-  return Array.isArray(saved) ? saved.filter((s): s is string => typeof s === "string") : [];
+  try {
+    const snap = await withTimeout(
+      getDoc(doc(db, "users", userId)),
+      FIRESTORE_TIMEOUT_MS,
+      FIRESTORE_SETUP_ERROR,
+    );
+    if (!snap.exists()) return [];
+    const data = snap.data();
+    const saved = data.savedProperties;
+    return Array.isArray(saved)
+      ? saved.filter((s): s is string => typeof s === "string")
+      : [];
+  } catch (error) {
+    if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
+      throw error;
+    }
+    return [];
+  }
 }
 
 export async function firebaseToggleSave(
@@ -125,45 +296,124 @@ export async function firebaseToggleSave(
   slug: string,
 ): Promise<boolean> {
   const db = getFirestoreDb();
-  if (!db) return false;
+  if (!db) throw new Error("Unable to save property right now. Please try again.");
   const ref = doc(db, "users", userId);
-  const current = await firebaseGetSavedSlugs(userId);
+
+  let current: string[] = [];
+  try {
+    current = await firebaseGetSavedSlugs(userId);
+  } catch (error) {
+    if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
+      throw error;
+    }
+  }
+
   const exists = current.includes(slug);
-  await updateDoc(ref, {
-    savedProperties: exists ? arrayRemove(slug) : arrayUnion(slug),
-  });
+  const savedProperties = exists
+    ? current.filter((item) => item !== slug)
+    : [...current, slug];
+
+  try {
+    await withTimeout(
+      setDoc(
+        ref,
+        {
+          savedProperties,
+        },
+        { merge: true },
+      ),
+      FIRESTORE_TIMEOUT_MS,
+      FIRESTORE_SETUP_ERROR,
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === FIRESTORE_SETUP_ERROR) {
+      throw error;
+    }
+    const code =
+      typeof error === "object" && error && "code" in error
+        ? String((error as { code: string }).code)
+        : "";
+    if (code === "permission-denied") {
+      throw new Error(
+        "Firestore blocked this save. Update Firestore rules (see GO_LIVE.md) so users can write their own users/{userId} document.",
+      );
+    }
+    throw new Error(
+      "Could not update your shortlist. Check Firestore is created and your connection, then try again.",
+    );
+  }
   return !exists;
+}
+
+/** Replace the shortlist (used when pruning removed listings). */
+export async function firebaseReplaceSavedSlugs(
+  userId: string,
+  savedProperties: string[],
+): Promise<void> {
+  const db = getFirestoreDb();
+  if (!db) return;
+  try {
+    await withTimeout(
+      setDoc(doc(db, "users", userId), { savedProperties }, { merge: true }),
+      FIRESTORE_TIMEOUT_MS,
+      FIRESTORE_SETUP_ERROR,
+    );
+  } catch {
+    // Non-blocking: UI already shows the pruned list.
+  }
 }
 
 export async function firebaseGetEnquiries(
   userId: string,
 ): Promise<PortalEnquiry[]> {
+  const auth = getFirebaseAuth();
   const db = getFirestoreDb();
   if (!db) return [];
-  const snap = await getDoc(doc(db, "users", userId));
-  if (!snap.exists()) return [];
-  const data = snap.data();
-  const enquiries = data.enquiries;
-  if (!Array.isArray(enquiries)) return [];
-  return enquiries.filter(
-    (item): item is PortalEnquiry =>
-      typeof item === "object" &&
-      item !== null &&
-      "id" in item &&
-      "type" in item &&
-      "summary" in item &&
-      "createdAt" in item,
-  );
+  // Only the signed-in user may read their own enquiry history.
+  if (!auth?.currentUser || auth.currentUser.uid !== userId) return [];
+  try {
+    const snap = await getDoc(doc(db, "users", userId));
+    if (!snap.exists()) return [];
+    const data = snap.data();
+    const enquiries = data.enquiries;
+    if (!Array.isArray(enquiries)) return [];
+    const email = String(data.email ?? auth.currentUser.email ?? "")
+      .trim()
+      .toLowerCase();
+    const parsed = enquiries.filter(
+      (item): item is PortalEnquiry =>
+        typeof item === "object" &&
+        item !== null &&
+        "id" in item &&
+        "type" in item &&
+        "summary" in item &&
+        "createdAt" in item,
+    );
+    return filterOwnEnquiries(userId, email, parsed);
+  } catch {
+    return [];
+  }
 }
 
 export async function firebaseAddEnquiry(
   userId: string,
   enquiry: Omit<PortalEnquiry, "id" | "createdAt">,
 ): Promise<PortalEnquiry[]> {
+  const auth = getFirebaseAuth();
   const db = getFirestoreDb();
   if (!db) return [];
+  if (!auth?.currentUser || auth.currentUser.uid !== userId) return [];
   const next: PortalEnquiry = {
     ...enquiry,
+    ownerUserId: enquiry.ownerUserId || userId,
+    ownerEmail:
+      (
+        enquiry.ownerEmail ||
+        auth.currentUser.email ||
+        ""
+      )
+        .trim()
+        .toLowerCase() || undefined,
     id: crypto.randomUUID(),
     createdAt: Date.now(),
   };

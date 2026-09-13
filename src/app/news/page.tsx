@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function NewsPage() {
   return (
     <>
-      <section className="relative min-h-[40vh] overflow-hidden pt-28">
+      <section className="page-offset relative min-h-[40vh] overflow-hidden">
         <Image
           src={siteImages.news}
           alt=""
@@ -59,10 +59,10 @@ export default function NewsPage() {
                   {article.excerpt}
                 </p>
                 <Link
-                  href="/contact"
+                  href="/contact?reason=general"
                   className="mt-6 inline-block text-sm text-[color:var(--gold)] hover:underline"
                 >
-                  Read more — contact us for full article
+                  Contact us about this topic
                 </Link>
               </div>
             </article>

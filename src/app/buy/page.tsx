@@ -1,36 +1,42 @@
 import type { Metadata } from "next";
-import { InfoBody, PageImageHero } from "@/components/PageTemplate";
-import { siteImages } from "@/data/hero-images";
+import Link from "next/link";
+import { InfoBody, PageHero } from "@/components/PageTemplate";
 
 export const metadata: Metadata = {
-  title: "Buy",
-  description: "Find your next home with MRA Haven Estates.",
+  title: "Buy a Property",
+  description:
+    "MRA Haven Estates currently focuses on lettings. Browse homes to rent in Bradford and West Yorkshire.",
 };
 
+/** Honest landing page — we do not offer a sales catalogue for buyers. */
 export default function BuyPage() {
   return (
     <>
-      <PageImageHero
-        title="Buy Your Next Home"
-        subtitle="Search properties, get expert advice, and move with confidence."
-        image={siteImages.buy}
+      <PageHero
+        title="Buying with MRA Haven Estates"
+        subtitle="Our live catalogue is homes to rent — not properties for sale."
       />
       <InfoBody
-        cta={{ label: "Search properties for sale", href: "/properties?type=sale" }}
-        bullets={[
-          "Dedicated negotiators from offer to completion",
-          "Mortgage and conveyancing introductions",
-          "Area guides for Bradford and West Yorkshire",
-          "Free instant market estimate tool on our homepage",
-        ]}
+        cta={{
+          label: "Browse homes to rent",
+          href: "/properties?type=rent",
+        }}
       >
         <p>
-          Whether you are a first-time buyer or moving up the ladder, our team
-          guides you from property search to completion.
+          We specialise in lettings across Bradford and West Yorkshire. If you
+          are looking for a place to live, you can search our current rental
+          listings and enquire about a specific property.
         </p>
         <p>
-          Browse our latest homes for sale across Bradford and West Yorkshire,
-          or book a viewing with our local experts.
+          Thinking of selling instead? See{" "}
+          <Link href="/sell" className="text-[color:var(--gold)]">
+            Sell your property
+          </Link>{" "}
+          or book a{" "}
+          <Link href="/free-valuation" className="text-[color:var(--gold)]">
+            free valuation
+          </Link>
+          .
         </p>
       </InfoBody>
     </>

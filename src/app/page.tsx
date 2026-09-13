@@ -1,4 +1,5 @@
 import { FeaturedProperties } from "@/components/FeaturedProperties";
+import { ClientPortalCta } from "@/components/ClientPortalCta";
 import { HeroExperience } from "@/components/hero/HeroExperience";
 import { RemovalSection } from "@/components/RemovalSection";
 import { ServiceCards } from "@/components/ServiceCards";
@@ -12,10 +13,10 @@ export default function HomePage() {
   return (
     <>
       <HeroExperience />
+      <ValuationCTA />
       <ServiceCards />
       <WhyChooseUs />
       <FeaturedProperties />
-      <ValuationCTA />
       <RemovalSection />
       <Testimonials />
 
@@ -33,17 +34,12 @@ export default function HomePage() {
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
-              href="/contact"
+              href="/contact?reason=general"
               className="btn-outline-gold inline-block px-10 py-4 text-sm tracking-wide uppercase"
             >
               Get in touch
             </Link>
-            <Link
-              href="/login"
-              className="btn-gold inline-block px-10 py-4 text-sm tracking-wide uppercase"
-            >
-              Client login
-            </Link>
+            <ClientPortalCta className="btn-gold inline-block px-10 py-4 text-sm tracking-wide uppercase" />
           </div>
         </div>
       </section>

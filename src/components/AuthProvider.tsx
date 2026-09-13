@@ -12,7 +12,9 @@ import {
 import {
   firebaseAddEnquiry,
   firebaseAuthEnabled,
+  firebaseEnrichSession,
   firebaseGetEnquiries,
+  firebaseGetIdToken,
   firebaseGetSavedSlugs,
   firebaseLogin,
   firebaseLogout,
@@ -20,23 +22,89 @@ import {
   firebaseToggleSave,
   watchFirebaseSession,
 } from "@/lib/firebase-auth";
+import { isAdminEmail } from "@/lib/admin";
+import { filterAvailablePropertySlugs } from "@/data/properties";
 import {
   addEnquiry,
+  applyEnquiryStatusUpdates,
+  ensureDemoAdminAccount,
+  filterOwnEnquiries,
   getEnquiries,
   getSavedSlugs,
   getSession,
   isPropertySaved,
   loginUser,
   logoutUser,
+  markNewSignupWelcome,
   registerUser,
   toggleSavedProperty,
   type PortalEnquiry,
   type PortalSession,
 } from "@/lib/portal";
 
+type EnquiryStatusUpdate = {
+  sourceEnquiryId: string;
+  status: "answered" | "closed";
+  reply: string;
+  repliedAt: number;
+};
+
+async function fetchEnquiryStatusUpdates(
+  email: string,
+  ownEnquiries: PortalEnquiry[],
+): Promise<EnquiryStatusUpdate[]> {
+  try {
+    const ids = ownEnquiries
+      .map((item) => item.sourceEnquiryId)
+      .filter((id): id is string => Boolean(id));
+    const params = new URLSearchParams();
+    if (ids.length) params.set("ids", ids.join(","));
+    const headers: Record<string, string> = {
+      "x-user-email": email,
+    };
+    const token = await firebaseGetIdToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const qs = params.toString();
+    const res = await fetch(
+      `/api/portal/enquiry-updates${qs ? `?${qs}` : ""}`,
+      { headers, cache: "no-store" },
+    );
+    const data = (await res.json()) as {
+      ok?: boolean;
+      updates?: EnquiryStatusUpdate[];
+    };
+    if (!res.ok || !data.ok || !Array.isArray(data.updates)) return [];
+    return data.updates;
+  } catch {
+    return [];
+  }
+}
+
+function mergeEnquiryUpdates(
+  list: PortalEnquiry[],
+  updates: EnquiryStatusUpdate[],
+): PortalEnquiry[] {
+  if (updates.length === 0) return list;
+  const byId = new Map(updates.map((item) => [item.sourceEnquiryId, item]));
+  return list.map((item) => {
+    const sourceId = item.sourceEnquiryId;
+    if (!sourceId) return item;
+    const update = byId.get(sourceId);
+    if (!update) return item;
+    return {
+      ...item,
+      status: update.status,
+      reply: update.reply,
+      repliedAt: update.repliedAt,
+    };
+  });
+}
+
 type AuthContextValue = {
   session: PortalSession | null;
   ready: boolean;
+  isAdmin: boolean;
   /** True when NEXT_PUBLIC_FIREBASE_* env vars are set */
   usingFirebase: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -51,39 +119,109 @@ type AuthContextValue = {
   enquiries: PortalEnquiry[];
   isSaved: (slug: string) => boolean;
   toggleSave: (slug: string) => boolean | Promise<boolean>;
-  recordEnquiry: (type: PortalEnquiry["type"], summary: string) => void;
+  recordEnquiry: (
+    type: PortalEnquiry["type"],
+    summary: string,
+    extra?: {
+      sourceEnquiryId?: string;
+      status?: PortalEnquiry["status"];
+    },
+  ) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const usingFirebase = firebaseAuthEnabled();
-  const [session, setSession] = useState<PortalSession | null>(null);
-  const [ready, setReady] = useState(false);
+  // Firebase sessions always come from Auth + Firestore profile (phone is Firestore-only).
+  const [session, setSession] = useState<PortalSession | null>(() => {
+    if (typeof window === "undefined") return null;
+    if (!usingFirebase) return getSession();
+    return null;
+  });
+  const [ready, setReady] = useState(() => !usingFirebase);
   const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
   const [enquiries, setEnquiries] = useState<PortalEnquiry[]>([]);
 
   const loadUserData = useCallback(
     async (next: PortalSession | null) => {
-      setSession(next);
       if (!next) {
+        setSession(null);
         setSavedSlugs([]);
         setEnquiries([]);
         return;
       }
 
       if (usingFirebase) {
-        const [saved, enquiryList] = await Promise.all([
-          firebaseGetSavedSlugs(next.userId),
-          firebaseGetEnquiries(next.userId),
-        ]);
-        setSavedSlugs(saved);
-        setEnquiries(enquiryList);
+        try {
+          const enriched = await firebaseEnrichSession(next);
+          setSession(enriched);
+          const [saved, rawEnquiries, live] = await Promise.all([
+            firebaseGetSavedSlugs(enriched.userId),
+            firebaseGetEnquiries(enriched.userId),
+            fetch("/api/properties")
+              .then((res) => res.json())
+              .then((data: { properties?: { slug: string }[] }) =>
+                Array.isArray(data.properties)
+                  ? data.properties.map((item) => item.slug)
+                  : [],
+              )
+              .catch(() => [] as string[]),
+          ]);
+          const enquiryList = filterOwnEnquiries(
+            enriched.userId,
+            enriched.email,
+            rawEnquiries,
+          );
+          const updates = await fetchEnquiryStatusUpdates(
+            enriched.email,
+            enquiryList,
+          );
+          const liveSet = new Set(live);
+          setSavedSlugs(
+            live.length
+              ? saved.filter((slug) => liveSet.has(slug))
+              : filterAvailablePropertySlugs(saved),
+          );
+          setEnquiries(mergeEnquiryUpdates(enquiryList, updates));
+        } catch {
+          setSession(next);
+          setSavedSlugs([]);
+          setEnquiries([]);
+        }
         return;
       }
 
-      setSavedSlugs(getSavedSlugs(next.userId).map((item) => item.slug));
-      setEnquiries(getEnquiries(next.userId));
+      setSession(next);
+      const saved = getSavedSlugs(next.userId).map((item) => item.slug);
+      try {
+        const res = await fetch("/api/properties");
+        const data = (await res.json()) as { properties?: { slug: string }[] };
+        const live = Array.isArray(data.properties)
+          ? data.properties.map((item) => item.slug)
+          : [];
+        const liveSet = new Set(live);
+        setSavedSlugs(
+          live.length
+            ? saved.filter((slug) => liveSet.has(slug))
+            : filterAvailablePropertySlugs(saved),
+        );
+      } catch {
+        setSavedSlugs(filterAvailablePropertySlugs(saved));
+      }
+      const own = filterOwnEnquiries(
+        next.userId,
+        next.email,
+        getEnquiries(next.userId, next.email),
+      );
+      const updates = await fetchEnquiryStatusUpdates(next.email, own);
+      setEnquiries(
+        filterOwnEnquiries(
+          next.userId,
+          next.email,
+          applyEnquiryStatusUpdates(next.userId, updates),
+        ),
+      );
     },
     [usingFirebase],
   );
@@ -96,7 +234,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return unsub;
     }
 
-    void loadUserData(getSession()).finally(() => setReady(true));
+    void ensureDemoAdminAccount()
+      .then(() => loadUserData(getSession()))
+      .finally(() => setReady(true));
     return undefined;
   }, [loadUserData, usingFirebase]);
 
@@ -104,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       ready,
+      isAdmin: isAdminEmail(session?.email),
       usingFirebase,
       login: async (email, password) => {
         if (usingFirebase) {
@@ -115,9 +256,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register: async (input) => {
         if (usingFirebase) {
           await loadUserData(await firebaseRegister(input));
+          markNewSignupWelcome();
           return;
         }
         await loadUserData(await registerUser(input));
+        markNewSignupWelcome();
       },
       logout: () => {
         if (usingFirebase) {
@@ -138,27 +281,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toggleSave: (slug) => {
         if (!session) return false;
         if (usingFirebase) {
-          return firebaseToggleSave(session.userId, slug).then((saved) => {
-            setSavedSlugs((prev) =>
-              saved ? [...prev, slug] : prev.filter((s) => s !== slug),
-            );
-            return saved;
-          });
+          return firebaseToggleSave(session.userId, slug)
+            .then((saved) => {
+              setSavedSlugs((prev) =>
+                saved ? [...prev, slug] : prev.filter((s) => s !== slug),
+              );
+              return saved;
+            });
         }
         const saved = toggleSavedProperty(session.userId, slug);
         setSavedSlugs(getSavedSlugs(session.userId).map((item) => item.slug));
         return saved;
       },
-      recordEnquiry: (type, summary) => {
+      recordEnquiry: (type, summary, extra) => {
         if (!session) return;
+        const payload = {
+          type,
+          summary,
+          ownerUserId: session.userId,
+          ownerEmail: session.email,
+          sourceEnquiryId: extra?.sourceEnquiryId,
+          status: extra?.status ?? "open",
+        };
         if (usingFirebase) {
-          void firebaseAddEnquiry(session.userId, { type, summary }).then(
-            setEnquiries,
+          void firebaseAddEnquiry(session.userId, payload).then((list) =>
+            setEnquiries(
+              filterOwnEnquiries(session.userId, session.email, list),
+            ),
           );
           return;
         }
-        addEnquiry(session.userId, { type, summary });
-        setEnquiries(getEnquiries(session.userId));
+        addEnquiry(session.userId, payload, session.email);
+        setEnquiries(getEnquiries(session.userId, session.email));
       },
     }),
     [enquiries, loadUserData, ready, savedSlugs, session, usingFirebase],

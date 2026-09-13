@@ -5,7 +5,7 @@ import type { PageContent } from "@/data/page-content";
 export function ContentPage({ content }: { content: PageContent }) {
   return (
     <>
-      <section className="relative min-h-[42vh] overflow-hidden pt-28">
+      <section className="page-offset relative min-h-[42vh] overflow-hidden">
         {content.image ? (
           <>
             <Image

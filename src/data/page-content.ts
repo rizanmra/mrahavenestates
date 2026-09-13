@@ -24,7 +24,7 @@ export const pages: Record<string, PageContent> = {
       "Mortgage and finance advice before you bid",
       "Conveyancing referrals for swift completion",
     ],
-    cta: { label: "Register your interest", href: "/contact" },
+    cta: { label: "Register your interest", href: "/contact?reason=auction" },
   },
   "sell/marketing": {
     title: "Unrivalled Marketing",
@@ -56,7 +56,7 @@ export const pages: Record<string, PageContent> = {
       "National and local bidder marketing",
       "Completion typically within 28 days",
     ],
-    cta: { label: "Discuss auction sale", href: "/contact" },
+    cta: { label: "Discuss auction sale", href: "/contact?reason=auction" },
   },
   "rent/report-repair": {
     title: "Report a Repair",
@@ -72,7 +72,7 @@ export const pages: Record<string, PageContent> = {
       "Vetted contractor network across Bradford",
       "Full audit trail for landlords",
     ],
-    cta: { label: "Contact repairs team", href: "/contact" },
+    cta: { label: "Contact repairs team", href: "/contact?reason=repairs" },
   },
   "rent/end-of-tenancy": {
     title: "End of Tenancy",
@@ -88,7 +88,7 @@ export const pages: Record<string, PageContent> = {
       "Meter readings and key return checklist",
       "Re-marketing within 48 hours where agreed",
     ],
-    cta: { label: "Speak to lettings", href: "/contact" },
+    cta: { label: "Speak to lettings", href: "/contact?reason=lettings" },
   },
   "rent/tenant-charges": {
     title: "Tenant Charges",
@@ -120,7 +120,10 @@ export const pages: Record<string, PageContent> = {
       "Quick online quotes — cover from move-in day",
       "Claims support when you need it most",
     ],
-    cta: { label: "Get a quote", href: "/contact" },
+    cta: {
+      label: "Ask about contents insurance",
+      href: "/contact?reason=lettings",
+    },
   },
   "landlords/managed": {
     title: "Fully Managed Service",
@@ -136,7 +139,7 @@ export const pages: Record<string, PageContent> = {
       "24/7 maintenance coordination",
       "Annual gas safety and electrical checks arranged",
     ],
-    cta: { label: "Let your property", href: "/free-valuation" },
+    cta: { label: "Let your property", href: "/lettings" },
   },
   "landlords/marketing": {
     title: "Landlord Marketing",
@@ -167,7 +170,7 @@ export const pages: Record<string, PageContent> = {
       "Accidental damage and malicious tenant protection",
       "Portfolio discounts available",
     ],
-    cta: { label: "Request insurance advice", href: "/contact" },
+    cta: { label: "Request insurance advice", href: "/contact?reason=landlords" },
   },
   "landlords/rent-cover": {
     title: "Rent Cover",
@@ -182,7 +185,7 @@ export const pages: Record<string, PageContent> = {
       "Works alongside tenant referencing",
       "Peace of mind for remote landlords",
     ],
-    cta: { label: "Learn more", href: "/contact" },
+    cta: { label: "Learn more", href: "/contact?reason=landlords" },
   },
   "landlords/charges": {
     title: "Landlord Charges",
@@ -197,7 +200,7 @@ export const pages: Record<string, PageContent> = {
       "Fully managed — percentage of monthly rent",
       "No hidden charges for standard renewals",
     ],
-    cta: { label: "Request a fee schedule", href: "/contact" },
+    cta: { label: "Request a fee schedule", href: "/contact?reason=landlords" },
   },
   "landlords/responsibilities": {
     title: "Your Responsibilities",
@@ -244,7 +247,7 @@ export const pages: Record<string, PageContent> = {
       "Staff volunteer days across West Yorkshire",
       "Sustainable moving — recycling packing materials",
     ],
-    cta: { label: "Partner with us", href: "/contact" },
+    cta: { label: "Partner with us", href: "/contact?reason=general" },
   },
 };
 
@@ -255,7 +258,7 @@ export function getPageContent(slug: string): PageContent {
       paragraphs: [
         "This page is being updated. Please contact our team for immediate assistance.",
       ],
-      cta: { label: "Contact us", href: "/contact" },
+      cta: { label: "Contact us", href: "/contact?reason=general" },
     }
   );
 }

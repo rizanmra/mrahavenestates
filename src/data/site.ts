@@ -13,11 +13,12 @@ export const site = {
     city: "Bradford",
     postcode: "BD8 9AJ",
   },
+  /** Only include real business profile URLs — generic platform homepages are omitted. */
   social: {
-    facebook: "https://facebook.com",
-    instagram: "https://instagram.com",
-    x: "https://x.com",
-    tiktok: "https://tiktok.com",
+    facebook: "",
+    instagram: "",
+    x: "",
+    tiktok: "",
   },
 };
 
@@ -36,7 +37,7 @@ export const services = [
     description:
       "Expert guidance from valuation to completion. We market your home with premium photography and targeted reach.",
     href: "/sales",
-    cta: "Book Now",
+    cta: "Explore sales",
     image: siteImages.sales,
   },
   {
@@ -45,7 +46,7 @@ export const services = [
     description:
       "Landlord and tenant services across Bradford and West Yorkshire. Managed lettings with full compliance.",
     href: "/lettings",
-    cta: "Book Now",
+    cta: "Explore lettings",
     image: siteImages.lettings,
   },
   {
@@ -54,7 +55,7 @@ export const services = [
     description:
       "Licensed removals with professional packing. From studio flats to full family relocations.",
     href: "/removal-services",
-    cta: "Book Now",
+    cta: "Explore removals",
     image: siteImages.removals,
   },
 ];
@@ -82,7 +83,7 @@ export const removalFeatures = [
     title: "Removal Quote",
     description:
       "Contact us for a no obligation removal quote.",
-    link: "/contact",
+    link: "/contact?reason=removals",
     linkLabel: "Removal Quote",
   },
 ];

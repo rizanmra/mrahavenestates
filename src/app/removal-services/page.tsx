@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RemovalServicesPage() {
   return (
-    <div className="pt-28">
+    <div className="page-offset">
       <section className="relative h-[50vh] min-h-[400px]">
         <Image
           src={siteImages.removals}
@@ -35,7 +35,7 @@ export default function RemovalServicesPage() {
       <section className="px-6 pb-24 text-center lg:px-10">
         <p className="text-3xl text-white">From £50</p>
         <Link
-          href="/contact"
+          href="/contact?reason=removals"
           className="btn-gold mt-8 inline-block px-10 py-4 text-sm font-medium uppercase"
         >
           Get a quote

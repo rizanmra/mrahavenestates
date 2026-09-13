@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function LettingsPage() {
   return (
-    <div className="pt-28">
+    <div className="page-offset">
       <section className="relative h-[50vh] min-h-[400px]">
         <Image
           src={siteImages.lettings}
@@ -38,7 +38,7 @@ export default function LettingsPage() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link
-              href="/contact"
+              href="/contact?reason=lettings"
               className="btn-gold px-8 py-3 text-sm font-medium uppercase"
             >
               Book now

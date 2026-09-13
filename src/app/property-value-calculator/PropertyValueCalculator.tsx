@@ -13,6 +13,15 @@ import {
 } from "@/lib/market-estimate";
 import { saveValuationLead } from "@/lib/valuation-leads";
 import { useAuth } from "@/components/AuthProvider";
+import {
+  formatPhoneForStorage,
+  formatUkAddressLine,
+  formatUkPostcode,
+  validateEmail,
+  validateName,
+  validatePhone,
+  validateUkPostcode,
+} from "@/lib/form-validation";
 
 const types = Object.keys(propertyTypeLabels) as PropertyTypeEstimate[];
 const conditions = Object.keys(conditionLabels) as PropertyCondition[];
@@ -25,7 +34,7 @@ const selectClass =
   "mt-2 w-full border-b border-[color:var(--line)] bg-[color:var(--navy)] py-2 text-white outline-none focus:border-[color:var(--gold)]";
 
 export function PropertyValueCalculator() {
-  const { session, recordEnquiry } = useAuth();
+  const { session, recordEnquiry, isAdmin } = useAuth();
   const [step, setStep] = useState<Step>("details");
 
   const [address, setAddress] = useState("");
@@ -50,57 +59,112 @@ export function PropertyValueCalculator() {
 
   const beds = useMemo(() => Number(bedrooms), [bedrooms]);
 
+  function unlockEstimate(
+    result: MarketEstimate,
+    lead: {
+      name: string;
+      email: string;
+      phone: string;
+      address?: string;
+      postcode?: string;
+    },
+  ) {
+    const displayAddress = lead.address ?? formatUkAddressLine(address);
+    const displayPostcode =
+      lead.postcode ??
+      formatUkPostcode(postcode) ??
+      postcode.trim().toUpperCase();
+
+    if (!isAdmin) {
+      saveValuationLead({
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        address: displayAddress,
+        postcode: displayPostcode,
+        propertyType,
+        bedrooms: beds,
+        estimateMid: result.mid,
+        estimateLow: result.low,
+        estimateHigh: result.high,
+        marketingOptIn,
+      });
+
+      if (session) {
+        recordEnquiry(
+          "valuation",
+          `Online estimate ${formatGbp(result.mid)} — ${displayAddress}, ${displayPostcode} (${propertyTypeLabels[propertyType]}, ${beds} ${beds === 1 ? "bedroom" : "bedrooms"})`,
+        );
+      }
+    }
+
+    setAddress(displayAddress);
+    setPostcode(displayPostcode);
+    setError("");
+    setEstimate(result);
+    setStep("result");
+  }
+
   function onDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formattedAddress = formatUkAddressLine(address);
+    const formattedPostcode = formatUkPostcode(postcode);
+    const postcodeError = validateUkPostcode(postcode);
+    if (postcodeError || !formattedPostcode) {
+      setError(postcodeError || "Enter a full UK postcode (e.g. BD1 5AH).");
+      return;
+    }
+
+    setAddress(formattedAddress);
+    setPostcode(formattedPostcode);
+
     const result = estimateMarketValue({
-      postcode,
+      postcode: formattedPostcode,
       propertyType,
       bedrooms: beds,
       condition,
       hasGarden,
       hasParking,
     });
-    if (!result || !address.trim()) {
-      setError("Enter your property address, a valid UK postcode, and bedrooms.");
+    if (!result) {
+      setError("Enter a valid UK postcode and bedrooms.");
       return;
     }
     setError("");
     setPendingEstimate(result);
+
+    if (session) {
+      unlockEstimate(result, {
+        name: session.name,
+        email: session.email,
+        phone: session.phone || "",
+        address: formattedAddress,
+        postcode: formattedPostcode,
+      });
+      return;
+    }
+
     setStep("optin");
   }
 
   function onOptIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pendingEstimate) return;
-    if (!name.trim() || !email.trim() || !phone.trim()) {
-      setError("Please add your name, email and phone to unlock the estimate.");
+
+    const nameError = validateName(name);
+    const emailError = validateEmail(email);
+    const phoneError = validatePhone(phone, true);
+    const firstError = nameError || emailError || phoneError;
+    if (firstError) {
+      setError(firstError);
       return;
     }
 
-    saveValuationLead({
-      name: name.trim(),
+    unlockEstimate(pendingEstimate, {
+      name: name.trim().replace(/\s+/g, " "),
       email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      address: address.trim(),
-      postcode: postcode.trim().toUpperCase(),
-      propertyType,
-      bedrooms: beds,
-      estimateMid: pendingEstimate.mid,
-      estimateLow: pendingEstimate.low,
-      estimateHigh: pendingEstimate.high,
-      marketingOptIn,
+      phone: formatPhoneForStorage(phone),
     });
-
-    if (session) {
-      recordEnquiry(
-        "valuation",
-        `Online estimate ${formatGbp(pendingEstimate.mid)} — ${address.trim()}, ${postcode.trim()} (${propertyTypeLabels[propertyType]}, ${beds} bed)`,
-      );
-    }
-
-    setError("");
-    setEstimate(pendingEstimate);
-    setStep("result");
   }
 
   function startAgain() {
@@ -110,8 +174,21 @@ export function PropertyValueCalculator() {
     setError("");
   }
 
+  if (step === "result" && estimate) {
+    return (
+      <div className="mx-auto mt-10 max-w-xl border border-[color:var(--line)] bg-[color:var(--navy-light)] p-6 md:p-8">
+        <ResultPanel
+          estimate={estimate}
+          address={address}
+          postcode={postcode}
+          onAgain={startAgain}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-10 grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="mt-0 grid grid-cols-1 gap-10 text-left lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
       {step === "details" ? (
         <form
           onSubmit={onDetails}
@@ -127,22 +204,35 @@ export function PropertyValueCalculator() {
           </div>
 
           <label className="block">
-            <span className="text-sm text-white">Property address</span>
+            <span className="text-sm text-white">
+              Property address{" "}
+              <span className="text-[color:var(--muted)]">(optional)</span>
+            </span>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              required
+              onBlur={() => {
+                if (address.trim()) setAddress(formatUkAddressLine(address));
+              }}
               placeholder="e.g. 12 Oak Street, Bradford"
               autoComplete="street-address"
               className={fieldClass}
             />
+            <span className="mt-2 block text-xs text-[color:var(--muted)]">
+              The online estimate uses your postcode area. Address helps if you
+              book a free in-person valuation.
+            </span>
           </label>
 
           <label className="block">
-            <span className="text-sm text-white">Postcode</span>
+            <span className="text-sm text-white">Postcode *</span>
             <input
               value={postcode}
-              onChange={(e) => setPostcode(e.target.value)}
+              onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+              onBlur={() => {
+                const formatted = formatUkPostcode(postcode);
+                if (formatted) setPostcode(formatted);
+              }}
               required
               placeholder="e.g. BD8 9AJ"
               autoComplete="postal-code"
@@ -167,7 +257,7 @@ export function PropertyValueCalculator() {
             </select>
           </label>
 
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             <label className="block">
               <span className="text-sm text-white">Bedrooms</span>
               <input
@@ -198,7 +288,7 @@ export function PropertyValueCalculator() {
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-6 text-sm text-[color:var(--muted)]">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[color:var(--muted)]">
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
@@ -217,7 +307,7 @@ export function PropertyValueCalculator() {
             </label>
           </div>
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-error">{error}</p> : null}
 
           <button type="submit" className="btn-gold px-8 py-3 text-sm uppercase">
             Continue to unlock estimate
@@ -272,6 +362,7 @@ export function PropertyValueCalculator() {
               required
               type="tel"
               autoComplete="tel"
+              placeholder="07xxx xxx xxx"
               className={fieldClass}
             />
           </label>
@@ -289,7 +380,7 @@ export function PropertyValueCalculator() {
             </span>
           </label>
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-error">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <button type="submit" className="btn-gold px-8 py-3 text-sm uppercase">
@@ -316,56 +407,33 @@ export function PropertyValueCalculator() {
         </form>
       ) : null}
 
-      {step === "result" && estimate ? (
-        <div className="space-y-6 border border-[color:var(--line)] bg-[color:var(--navy-light)] p-6 md:p-8 lg:hidden">
-          <ResultPanel
-            estimate={estimate}
-            address={address}
-            postcode={postcode}
-            onAgain={startAgain}
-          />
-        </div>
-      ) : null}
-
       <aside className="border border-[color:var(--line)] bg-[color:var(--navy-deep)] p-6 md:p-8">
-        {step !== "result" || !estimate ? (
-          <div>
-            <p className="text-xs tracking-[0.3em] text-[color:var(--gold)] uppercase">
-              How it works
-            </p>
-            <h2 className="font-display mt-3 text-3xl text-white">
-              Address in → rough market value out
-            </h2>
-            <ol className="mt-6 space-y-4 text-sm leading-relaxed text-[color:var(--muted)]">
-              <li>
-                <span className="text-[color:var(--gold)]">1.</span> Enter your
-                address and property details
-              </li>
-              <li>
-                <span className="text-[color:var(--gold)]">2.</span> Leave soft
-                contact details to unlock the estimate
-              </li>
-              <li>
-                <span className="text-[color:var(--gold)]">3.</span> See an
-                indicative range, then book a free in-person valuation
-              </li>
-            </ol>
-            {pendingEstimate && step === "optin" ? (
-              <p className="mt-8 text-sm text-[color:var(--gold)]">
-                Your estimate is ready — unlock it with your details.
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="hidden lg:block">
-            <ResultPanel
-              estimate={estimate}
-              address={address}
-              postcode={postcode}
-              onAgain={startAgain}
-            />
-          </div>
-        )}
+        <p className="text-xs tracking-[0.3em] text-[color:var(--gold)] uppercase">
+          How it works
+        </p>
+        <h2 className="font-display mt-3 text-3xl text-white">
+          Address in → rough market value out
+        </h2>
+        <ol className="mt-6 space-y-4 text-sm leading-relaxed text-[color:var(--muted)]">
+            <li>
+              <span className="text-[color:var(--gold)]">1.</span> Enter a full
+              UK postcode (and property details)
+            </li>
+            <li>
+              <span className="text-[color:var(--gold)]">2.</span> Leave soft
+              contact details to unlock the estimate
+            </li>
+            <li>
+              <span className="text-[color:var(--gold)]">3.</span> See an
+              indicative postcode-area range, then book a free in-person
+              valuation
+            </li>
+        </ol>
+        {pendingEstimate && step === "optin" ? (
+          <p className="mt-8 text-sm text-[color:var(--gold)]">
+            Your estimate is ready — unlock it with your details.
+          </p>
+        ) : null}
       </aside>
     </div>
   );
@@ -382,14 +450,21 @@ function ResultPanel({
   postcode: string;
   onAgain: () => void;
 }) {
+  const displayAddress = formatUkAddressLine(address);
+  const displayPostcode = formatUkPostcode(postcode) ?? postcode.toUpperCase();
+
   return (
-    <div>
+    <div className="text-center">
       <p className="text-xs tracking-[0.3em] text-[color:var(--gold)] uppercase">
-        Estimated market value · {estimate.area}
+        Estimated market value · {displayPostcode}
       </p>
-      <p className="mt-3 text-sm text-[color:var(--muted)]">
-        {address}, {postcode}
-      </p>
+      {displayAddress ? (
+        <p className="mt-3 text-sm text-[color:var(--muted)]">{displayAddress}</p>
+      ) : (
+        <p className="mt-3 text-sm text-[color:var(--muted)]">
+          Postcode-area guide for {displayPostcode}
+        </p>
+      )}
       <p className="font-display mt-4 text-5xl text-white md:text-6xl">
         {formatGbp(estimate.mid)}
       </p>
@@ -399,9 +474,9 @@ function ResultPanel({
           {formatGbp(estimate.low)} – {formatGbp(estimate.high)}
         </span>
       </p>
-      <p className="mt-3 text-xs text-[color:var(--muted)]">
+      <p className="mx-auto mt-3 max-w-md text-xs text-[color:var(--muted)]">
         {estimate.confidence === "local"
-          ? "Based on local postcode-area guidance for this outcode."
+          ? `Based on local guidance for the ${estimate.area} postcode area.`
           : "Wider regional guide — book a valuation for a localised figure."}
       </p>
       <div className="mt-8 space-y-3">
@@ -411,21 +486,15 @@ function ResultPanel({
         >
           Book a free accurate valuation
         </Link>
-        <Link
-          href="/stamp-duty"
-          className="btn-outline-gold inline-block w-full px-6 py-3 text-center text-sm uppercase"
-        >
-          Stamp duty calculator
-        </Link>
         <button
           type="button"
           onClick={onAgain}
-          className="w-full py-2 text-sm text-[color:var(--muted)] hover:text-[color:var(--gold)]"
+          className="btn-outline-gold inline-block w-full px-6 py-3 text-center text-sm uppercase"
         >
           Check another property
         </button>
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-[color:var(--muted)]">
+      <p className="mx-auto mt-6 max-w-md text-xs leading-relaxed text-[color:var(--muted)]">
         This is an illustrative estimate only — not a formal valuation or RICS
         appraisal. Market conditions change; always get professional advice
         before selling or buying.

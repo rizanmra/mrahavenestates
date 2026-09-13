@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { properties } from "@/data/properties";
+import { listProperties } from "@/lib/listings-store";
 
-export function FeaturedProperties() {
-  const featured = properties.slice(0, 3);
+export async function FeaturedProperties() {
+  const featured = (await listProperties()).slice(0, 3);
 
   return (
     <section className="border-t border-[color:var(--line)] px-6 py-24 lg:px-10">
@@ -18,7 +18,7 @@ export function FeaturedProperties() {
             </h2>
           </div>
           <Link
-            href="/properties"
+            href="/properties?type=rent"
             className="hidden text-sm text-[color:var(--gold)] hover:underline md:inline"
           >
             View all properties
@@ -56,7 +56,9 @@ export function FeaturedProperties() {
                   {property.price}
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--muted)]">
-                  {property.beds} bed · {property.baths} bath · {property.area}
+                  {property.beds} {property.beds === 1 ? "bedroom" : "bedrooms"} ·{" "}
+                  {property.baths} {property.baths === 1 ? "bath" : "baths"} ·{" "}
+                  {property.area}
                 </p>
               </div>
             </Link>

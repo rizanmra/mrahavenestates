@@ -24,8 +24,19 @@ Use this when creating the client's **Vercel** and **Firebase** accounts in the 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'admin@mrahavenestates.co.uk';
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /propertyEnquiries/{enquiryId} {
+      // Public can submit; only staff can read the full inbox.
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
     }
   }
 }
@@ -60,6 +71,8 @@ Point DNS to Vercel (A/CNAME as shown in Vercel → Domains). Keep Wix for email
 - [ ] `/login` register + login (Firebase)
 - [ ] Save a property while logged in
 - [ ] `/free-valuation` + contact forms
+- [ ] Property enquiry appears in `/admin` staff inbox (not email)
+- [ ] Contact Us still arrives by email
 
 ## Demo mode (no Firebase yet)
 

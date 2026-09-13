@@ -1,6 +1,11 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  type Firestore,
+} from "firebase/firestore";
 
 export type FirebasePublicConfig = {
   apiKey: string;
@@ -67,6 +72,15 @@ export function getFirebaseAuth(): Auth | null {
 export function getFirestoreDb(): Firestore | null {
   const firebaseApp = getFirebaseApp();
   if (!firebaseApp) return null;
-  if (!db) db = getFirestore(firebaseApp);
+  if (!db) {
+    try {
+      // Memory cache avoids “stuck offline” hangs when Firestore isn’t set up yet.
+      db = initializeFirestore(firebaseApp, {
+        localCache: memoryLocalCache(),
+      });
+    } catch {
+      db = getFirestore(firebaseApp);
+    }
+  }
   return db;
 }

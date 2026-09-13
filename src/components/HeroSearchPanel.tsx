@@ -1,75 +1,141 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
-type SearchType = "buy" | "rent";
+type SearchMode = "rent" | "value";
+
+const STORAGE_KEY = "mra-home-value-address";
+
+const placeholders: Record<SearchMode, string> = {
+  rent: "Enter a place, address or postcode",
+  value: "Want to know your home's value? Enter your address…",
+};
 
 export function HeroSearchPanel() {
-  const [type, setType] = useState<SearchType>("buy");
+  const router = useRouter();
+  const [mode, setMode] = useState<SearchMode>("rent");
   const [location, setLocation] = useState("");
 
-  const searchHref = `/properties?type=${type === "buy" ? "sale" : "rent"}${
-    location ? `&location=${encodeURIComponent(location.trim())}` : ""
-  }`;
+  function openMarketValue(address: string) {
+    const trimmed = address.trim();
+    try {
+      if (trimmed) {
+        sessionStorage.setItem(STORAGE_KEY, trimmed);
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // private mode
+    }
+    window.dispatchEvent(
+      new CustomEvent("mra-home-value", { detail: { address: trimmed } }),
+    );
+    document
+      .getElementById("market-value")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function goRent() {
+    const trimmed = location.trim();
+    const href = trimmed
+      ? `/properties?type=rent&location=${encodeURIComponent(trimmed)}`
+      : "/properties?type=rent";
+    router.push(href);
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (mode === "value") {
+      openMarketValue(location);
+      return;
+    }
+    goRent();
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <div className="overflow-hidden rounded-sm border border-[color:var(--line)] bg-[color:var(--navy-light)] shadow-2xl">
+      {mode === "value" ? (
+        <p className="home-value-prompt mb-3 text-center text-sm tracking-wide text-[color:var(--gold)] md:text-base">
+          Free market estimate — Bradford &amp; West Yorkshire
+        </p>
+      ) : null}
+
+      <form
+        onSubmit={onSubmit}
+        className="overflow-hidden rounded-sm border border-[color:var(--line)] bg-[color:var(--navy-light)] shadow-2xl"
+      >
         <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-stretch">
           <label className="min-w-0 flex-1">
-            <span className="sr-only">Enter a place or postcode</span>
+            <span className="sr-only">
+              {mode === "value"
+                ? "Enter your property address"
+                : "Enter a place or postcode"}
+            </span>
             <input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Enter a Place or Postcode"
-              className="w-full bg-white px-4 py-3.5 text-sm text-[color:var(--navy)] outline-none placeholder:text-gray-400"
+              placeholder={placeholders[mode]}
+              autoComplete={mode === "value" ? "street-address" : "address-level2"}
+              className="w-full bg-white px-4 py-3.5 text-sm text-[color:var(--navy)] outline-none placeholder:text-[color:var(--navy)]/50"
             />
           </label>
 
           <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
             <button
               type="button"
-              onClick={() => setType("buy")}
-              className={`px-5 py-3.5 text-sm font-semibold tracking-wide uppercase transition-colors ${
-                type === "buy"
-                  ? "bg-[#c41e3a] text-white"
-                  : "bg-white/15 text-white hover:bg-white/25"
-              }`}
-            >
-              Buy
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("rent")}
-              className={`px-5 py-3.5 text-sm font-semibold tracking-wide uppercase transition-colors ${
-                type === "rent"
+              onClick={() => {
+                setMode("rent");
+                goRent();
+              }}
+              className={`cursor-pointer px-4 py-3.5 text-sm font-semibold tracking-wide uppercase transition-colors sm:px-5 ${
+                mode === "rent"
                   ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
                   : "bg-white/15 text-white hover:bg-white/25"
               }`}
             >
               Rent
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("value");
+                openMarketValue(location);
+              }}
+              className={`cursor-pointer px-4 py-3.5 text-sm font-semibold tracking-wide uppercase transition-colors sm:px-5 ${
+                mode === "value"
+                  ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
+                  : "bg-white/15 text-white hover:bg-white/25"
+              }`}
+            >
+              Value
+            </button>
           </div>
-
-          <Link
-            href={searchHref}
-            className="bg-[#c41e3a] px-6 py-3.5 text-center text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:bg-[#a81832] sm:shrink-0"
-          >
-            Search
-          </Link>
         </div>
-      </div>
+      </form>
 
-      <p className="mt-3 text-center text-xs text-[color:var(--muted)]">
-        Search homes across Bradford and West Yorkshire ·{" "}
-        <Link
-          href="/free-valuation"
-          className="font-medium text-[color:var(--gold)] hover:underline"
-        >
-          Free instant valuation
-        </Link>
+      <p className="mt-3 text-center text-base text-[color:var(--muted)] md:text-lg">
+        {mode === "value" ? (
+          <>
+            Instant estimated market value · then book a free accurate
+            valuation
+          </>
+        ) : (
+          <>
+            Find homes to rent across Bradford and West Yorkshire ·{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode("value");
+                openMarketValue(location);
+              }}
+              className="cursor-pointer font-medium text-[color:var(--gold)] hover:underline"
+            >
+              What&apos;s my home worth?
+            </button>
+          </>
+        )}
       </p>
     </div>
   );

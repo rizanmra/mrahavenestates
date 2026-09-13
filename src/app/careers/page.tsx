@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function CareersPage() {
   return (
     <>
-      <section className="relative min-h-[40vh] overflow-hidden pt-28">
+      <section className="page-offset relative min-h-[40vh] overflow-hidden">
         <Image
           src={siteImages.careers}
           alt=""
@@ -55,7 +55,7 @@ export default function CareersPage() {
           ))}
 
           <Link
-            href="/contact"
+            href="/contact?reason=careers"
             className="btn-gold inline-block px-8 py-3 text-sm uppercase"
           >
             Apply now

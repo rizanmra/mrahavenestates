@@ -2,14 +2,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { SavePropertyButton } from "@/components/SavePropertyButton";
-import { getProperty, properties } from "@/data/properties";
+import { PropertyStaffActions } from "@/components/PropertyStaffActions";
+import {
+  getPropertyBySlug,
+  listProperties,
+} from "@/lib/listings-store";
+
+export const dynamic = "force-dynamic";
 
 type PropertyPageProps = {
   params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
+  const properties = await listProperties();
   return properties.map((property) => ({ slug: property.slug }));
 }
 
@@ -17,20 +23,20 @@ export async function generateMetadata({
   params,
 }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = getProperty(slug);
+  const property = await getPropertyBySlug(slug);
   return { title: property?.title ?? "Property" };
 }
 
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property = getProperty(slug);
+  const property = await getPropertyBySlug(slug);
 
   if (!property) {
     notFound();
   }
 
   return (
-    <div className="pt-28">
+    <div className="page-offset">
       <section className="relative h-[50vh] min-h-[400px]">
         <Image
           src={property.image}
@@ -46,7 +52,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
       <section className="px-6 py-16 lg:px-10">
         <div className="mx-auto max-w-3xl">
           <Link
-            href="/properties"
+            href="/properties?type=rent"
             className="text-sm text-[color:var(--gold)]"
           >
             ← Back to properties
@@ -64,7 +70,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-[color:var(--line)] pt-8">
             <div>
               <dt className="text-xs text-[color:var(--muted)] uppercase">
-                Beds
+                Bedrooms
               </dt>
               <dd className="mt-2 text-xl text-white">{property.beds}</dd>
             </div>
@@ -81,15 +87,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <dd className="mt-2 text-xl text-white">{property.area}</dd>
             </div>
           </dl>
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/contact"
-              className="btn-gold inline-block px-8 py-3 text-sm font-medium uppercase"
-            >
-              Enquire about this property
-            </Link>
-            <SavePropertyButton slug={property.slug} />
-          </div>
+          <PropertyStaffActions slug={property.slug} />
         </div>
       </section>
     </div>

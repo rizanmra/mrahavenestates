@@ -6,7 +6,7 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="pt-28">
+    <div className="page-offset">
       <section className="px-6 py-16 lg:px-10">
         <div className="mx-auto max-w-3xl">
           <h1 className="font-display text-4xl text-white">{title}</h1>

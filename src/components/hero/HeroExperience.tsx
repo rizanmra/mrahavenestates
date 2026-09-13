@@ -49,7 +49,7 @@ export function HeroExperience() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-t from-[color:var(--navy)] to-transparent"
         />
 
-        <div className="pointer-events-none absolute inset-x-0 top-28 z-10 px-6 text-center md:top-32 md:px-10">
+        <div className="pointer-events-none absolute inset-x-0 top-36 z-10 px-6 text-center md:top-40 md:px-10">
           <p className="text-xs tracking-[0.4em] text-[color:var(--gold)] uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] md:text-sm">
             The region&apos;s trusted estate agent
           </p>

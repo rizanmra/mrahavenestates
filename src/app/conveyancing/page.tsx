@@ -16,7 +16,7 @@ export default function ConveyancingPage() {
         image={siteImages.conveyancing}
       />
       <InfoBody
-        cta={{ label: "Enquire", href: "/contact" }}
+        cta={{ label: "Get a conveyancing quote", href: "/contact?reason=conveyancing" }}
         bullets={[
           "Sale and purchase conveyancing referrals",
           "Fixed-fee quotes where possible",

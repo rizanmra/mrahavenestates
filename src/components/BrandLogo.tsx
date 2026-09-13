@@ -11,7 +11,7 @@ type BrandLogoProps = {
 };
 
 const sizes = {
-  nav: { width: 160, height: 160, className: "h-12 w-12 sm:h-[3.25rem] sm:w-[3.25rem]" },
+  nav: { width: 384, height: 384, className: "h-20 w-20" },
   footer: { width: 180, height: 180, className: "h-[4.5rem] w-[4.5rem]" },
   lg: { width: 220, height: 220, className: "h-24 w-24" },
 } as const;

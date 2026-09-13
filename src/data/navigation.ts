@@ -17,40 +17,6 @@ export type NavItem = {
 
 export const mainNav: NavItem[] = [
   {
-    label: "Buy",
-    href: "/buy",
-    highlight: {
-      label: "Book Your FREE Valuation",
-      href: "/free-valuation",
-    },
-    columns: [
-      {
-        title: "Buy Your Next Home",
-        links: [
-          { label: "Property Search", href: "/properties?type=sale" },
-          { label: "Buying A Property", href: "/buy" },
-          { label: "Buy at Auction", href: "/buy/auction" },
-        ],
-      },
-      {
-        title: "Our Services",
-        links: [
-          { label: "Mortgages", href: "/mortgages" },
-          { label: "Conveyancing / Solicitors", href: "/conveyancing" },
-          { label: "Removal Services", href: "/removal-services" },
-        ],
-      },
-      {
-        title: "Useful Information",
-        links: [
-          { label: "Property Value Calculator", href: "/property-value-calculator" },
-          { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Area Guides", href: "/area-guides" },
-        ],
-      },
-    ],
-  },
-  {
     label: "Sell",
     href: "/sell",
     highlight: {
@@ -92,6 +58,7 @@ export const mainNav: NavItem[] = [
         title: "Property Search",
         links: [
           { label: "Find a Property to Rent", href: "/properties?type=rent" },
+          { label: "Enquire about a Property", href: "/enquire" },
           { label: "Find Your Local Branch", href: "/branches" },
           { label: "Mortgages", href: "/mortgages" },
         ],
@@ -153,7 +120,7 @@ export const mainNav: NavItem[] = [
     href: "/mortgages",
     highlight: {
       label: "Speak to an Advisor",
-      href: "/contact",
+      href: "/contact?reason=mortgage",
     },
     columns: [
       {
@@ -161,13 +128,13 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Mortgage Advice", href: "/mortgages" },
           { label: "Buy to Let Mortgages", href: "/mortgages/buy-to-let" },
-          { label: "First-Time Buyers", href: "/buy" },
+          { label: "Free Valuation", href: "/free-valuation" },
         ],
       },
       {
-        title: "Buying & Selling",
+        title: "Moving home",
         links: [
-          { label: "Buying a Property", href: "/buy" },
+          { label: "Find a Property to Rent", href: "/properties?type=rent" },
           { label: "Selling Your Property", href: "/sell" },
           { label: "Free Valuation", href: "/free-valuation" },
         ],
@@ -177,7 +144,7 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Contact Us", href: "/contact" },
+          { label: "Contact Us", href: "/contact?reason=mortgage" },
         ],
       },
     ],
@@ -187,23 +154,23 @@ export const mainNav: NavItem[] = [
     href: "/conveyancing",
     highlight: {
       label: "Get a Conveyancing Quote",
-      href: "/contact",
+      href: "/contact?reason=conveyancing",
     },
     columns: [
       {
         title: "Conveyancing Services",
         links: [
           { label: "Conveyancing / Solicitors", href: "/conveyancing" },
-          { label: "Buying a Property", href: "/buy" },
           { label: "Selling Your Property", href: "/sell" },
+          { label: "Lettings", href: "/lettings" },
         ],
       },
       {
         title: "Related Services",
         links: [
           { label: "Mortgages", href: "/mortgages" },
-          { label: "Buy at Auction", href: "/buy/auction" },
           { label: "Sell at Auction", href: "/sell/auction" },
+          { label: "Find a Property to Rent", href: "/properties?type=rent" },
         ],
       },
       {
@@ -211,7 +178,7 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Property Value Calculator", href: "/property-value-calculator" },
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
-          { label: "Contact Us", href: "/contact" },
+          { label: "Contact Us", href: "/contact?reason=conveyancing" },
         ],
       },
     ],
@@ -229,7 +196,7 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Our Story", href: "/about" },
           { label: "Careers", href: "/careers" },
-          { label: "Contact Us", href: "/contact" },
+          { label: "Contact Us", href: "/contact?reason=general" },
         ],
       },
       {
@@ -252,11 +219,12 @@ export const mainNav: NavItem[] = [
   },
   { label: "News", href: "/news" },
   { label: "Careers", href: "/careers" },
-  { label: "Contact", href: "/contact" },
+  { label: "Contact", href: "/contact?reason=general" },
 ];
 
 export const utilityLinks = [
   { label: "My Saved Properties", href: "/saved-properties" },
   { label: "My Account", href: "/account" },
-  { label: "Login", href: "/login" },
+  { label: "Staff portal", href: "/admin" },
+  { label: "Login", href: "/login#login-form" },
 ];

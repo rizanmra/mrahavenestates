@@ -4,7 +4,7 @@ import FreeValuationForm from "./FreeValuationForm";
 export const metadata: Metadata = {
   title: "Free Valuation",
   description:
-    "Book a free, no-obligation property valuation with MRA Haven Estates.",
+    "Find the latest HM Land Registry sold price for a UK property address, then unlock your figure with a valid email.",
 };
 
 export default function FreeValuationPage() {

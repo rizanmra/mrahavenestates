@@ -16,7 +16,7 @@ export default function MortgagesPage() {
         image={siteImages.mortgages}
       />
       <InfoBody
-        cta={{ label: "Get in touch", href: "/contact" }}
+        cta={{ label: "Get in touch", href: "/contact?reason=mortgage" }}
         bullets={[
           "Whole-of-market broker introductions",
           "First-time buyer and remortgage support",

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SalesPage() {
   return (
-    <div className="pt-28">
+    <div className="page-offset">
       <section className="relative h-[50vh] min-h-[400px]">
         <Image
           src={siteImages.sales}
@@ -44,10 +44,10 @@ export default function SalesPage() {
               Free valuation
             </Link>
             <Link
-              href="/properties?type=sale"
+              href="/sell"
               className="btn-outline-gold px-8 py-3 text-sm uppercase"
             >
-              View homes for sale
+              How we sell
             </Link>
           </div>
         </div>
