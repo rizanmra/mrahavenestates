@@ -3,11 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyStaffActions } from "@/components/PropertyStaffActions";
-import { seedProperties } from "@/data/properties";
-import {
-  getPropertyBySlug,
-  listProperties,
-} from "@/lib/listings-store";
+import { getProperty, seedProperties } from "@/data/properties";
 
 export const dynamic = "force-dynamic";
 
@@ -15,28 +11,21 @@ type PropertyPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export async function generateStaticParams() {
-  try {
-    const properties = await listProperties();
-    return properties.map((property) => ({ slug: property.slug }));
-  } catch {
-    return [];
-  }
+export function generateStaticParams() {
+  return seedProperties.map((property) => ({ slug: property.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = await getPropertyBySlug(slug);
+  const property = getProperty(slug);
   return { title: property?.title ?? "Property" };
 }
 
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property =
-    (await getPropertyBySlug(slug).catch(() => undefined)) ||
-    seedProperties.find((item) => item.slug === slug);
+  const property = getProperty(slug);
 
   if (!property) {
     notFound();
@@ -59,7 +48,11 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
       <section className="px-6 py-16 lg:px-10">
         <div className="mx-auto max-w-3xl">
           <Link
-            href="/properties?type=rent"
+            href={
+              property.type === "sale"
+                ? "/properties?type=sale"
+                : "/properties?type=rent"
+            }
             className="text-sm text-[color:var(--gold)]"
           >
             ← Back to properties

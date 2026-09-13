@@ -8,11 +8,15 @@ let db: Firestore | null = null;
 function readServiceAccount() {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
   if (json) {
-    return JSON.parse(json) as {
-      project_id?: string;
-      client_email?: string;
-      private_key?: string;
-    };
+    try {
+      return JSON.parse(json) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+    } catch {
+      return null;
+    }
   }
 
   const projectId =
@@ -40,20 +44,23 @@ function ensureAdminApp(): App | null {
     return null;
   }
 
-  if (!getApps().length) {
-    app = initializeApp({
-      credential: cert({
+  try {
+    if (!getApps().length) {
+      app = initializeApp({
+        credential: cert({
+          projectId: account.project_id,
+          clientEmail: account.client_email,
+          privateKey: account.private_key,
+        }),
         projectId: account.project_id,
-        clientEmail: account.client_email,
-        privateKey: account.private_key,
-      }),
-      projectId: account.project_id,
-    });
-  } else {
-    app = getApps()[0]!;
+      });
+    } else {
+      app = getApps()[0]!;
+    }
+    return app;
+  } catch {
+    return null;
   }
-
-  return app;
 }
 
 /** Server-only Admin Firestore. Returns null when credentials are not configured. */

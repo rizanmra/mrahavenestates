@@ -43,19 +43,20 @@ const postcodeBase: Record<string, number> = {
   WF2: 195_000,
 };
 
+/** Applied to a typical 3-bed terrace baseline — keep these modest so they do not stack wildly. */
 const typeMultiplier: Record<PropertyTypeEstimate, number> = {
-  detached: 1.35,
-  semi: 1.15,
-  terrace: 0.95,
-  flat: 0.82,
-  bungalow: 1.1,
+  detached: 1.22,
+  semi: 1.08,
+  terrace: 1,
+  flat: 0.84,
+  bungalow: 1.05,
 };
 
 const conditionMultiplier: Record<PropertyCondition, number> = {
-  "needs-work": 0.88,
+  "needs-work": 0.94,
   average: 1,
-  good: 1.06,
-  excellent: 1.12,
+  good: 1.03,
+  excellent: 1.06,
 };
 
 function extractOutcode(postcode: string): string {
@@ -73,18 +74,18 @@ function extractOutcode(postcode: string): string {
 }
 
 function bedsMultiplier(beds: number): number {
-  if (beds <= 1) return 0.78;
-  if (beds === 2) return 0.9;
+  if (beds <= 1) return 0.82;
+  if (beds === 2) return 0.92;
   if (beds === 3) return 1;
-  if (beds === 4) return 1.18;
-  if (beds === 5) return 1.32;
-  return 1.45;
+  if (beds === 4) return 1.1;
+  if (beds === 5) return 1.18;
+  return 1.24;
 }
 
 function outdoorMultiplier(hasGarden: boolean, parking: boolean): number {
   let m = 1;
-  if (hasGarden) m += 0.03;
-  if (parking) m += 0.025;
+  if (hasGarden) m += 0.015;
+  if (parking) m += 0.01;
   return m;
 }
 
@@ -94,6 +95,8 @@ export type MarketEstimate = {
   high: number;
   area: string;
   confidence: "local" | "regional";
+  source?: "sold-prices" | "guide";
+  salesCount?: number;
 };
 
 export function estimateMarketValue(input: {
@@ -119,7 +122,7 @@ export function estimateMarketValue(input: {
       outdoorMultiplier(Boolean(input.hasGarden), Boolean(input.hasParking)),
   );
 
-  const spread = Math.round(mid * (known ? 0.06 : 0.09));
+  const spread = Math.round(mid * (known ? 0.05 : 0.08));
 
   return {
     low: mid - spread,
@@ -127,6 +130,7 @@ export function estimateMarketValue(input: {
     high: mid + spread,
     area: outcode,
     confidence: known ? "local" : "regional",
+    source: "guide",
   };
 }
 

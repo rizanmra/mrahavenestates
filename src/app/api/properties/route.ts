@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  getPropertiesByType,
-  listProperties,
-} from "@/lib/listings-store";
-import type { PropertyType } from "@/data/properties";
+  getPropertiesByType as getSeedByType,
+  seedProperties,
+  type PropertyType,
+} from "@/data/properties";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,9 +14,7 @@ export async function GET(request: Request) {
       ? (typeParam as PropertyType)
       : undefined;
 
-  let properties = type
-    ? await getPropertiesByType(type)
-    : await listProperties();
+  let properties = type ? getSeedByType(type) : seedProperties;
 
   if (location) {
     properties = properties.filter(

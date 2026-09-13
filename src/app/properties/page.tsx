@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PropertyCard } from "@/components/PropertyCard";
-import { seedProperties, type Property, type PropertyType } from "@/data/properties";
-import { getPropertiesByType } from "@/lib/listings-store";
+import {
+  getPropertiesByType,
+  type PropertyType,
+} from "@/data/properties";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +29,7 @@ export default async function PropertiesPage({
   const type: PropertyType = params.type === "sale" ? "sale" : "rent";
   const forSale = type === "sale";
 
-  let results: Property[] = [];
-  try {
-    results = await getPropertiesByType(type);
-  } catch {
-    results = seedProperties.filter((item) => item.type === type);
-  }
+  let results = getPropertiesByType(type);
 
   if (params.location) {
     const query = params.location.toLowerCase();

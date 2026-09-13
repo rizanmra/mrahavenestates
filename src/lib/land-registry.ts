@@ -196,6 +196,116 @@ export async function lookupPropertyPrice(params: {
   };
 }
 
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const first = sorted[mid];
+  const second = sorted[mid - 1];
+  if (sorted.length % 2 === 0 && first != null && second != null) {
+    return Math.round((first + second) / 2);
+  }
+  return first ?? 0;
+}
+
+function percentile(values: number[], p: number): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.round((sorted.length - 1) * p)),
+  );
+  return sorted[index] ?? 0;
+}
+
+function matchesPropertyType(lrType: string, want: string): boolean {
+  const type = lrType.toLowerCase();
+  switch (want) {
+    case "detached":
+      return type.includes("detached") && !type.includes("semi");
+    case "semi":
+      return type.includes("semi");
+    case "terrace":
+      return type.includes("terrace");
+    case "flat":
+      return type.includes("flat") || type.includes("maisonette");
+    case "bungalow":
+      return type.includes("bungalow");
+    default:
+      return true;
+  }
+}
+
+function inflateToToday(amount: number, saleDate: string): number {
+  const sold = Date.parse(saleDate);
+  if (!Number.isFinite(sold)) return amount;
+  const months = Math.max(0, (Date.now() - sold) / (1000 * 60 * 60 * 24 * 30.4));
+  const factor = 1 + Math.min(0.12, months * 0.0025);
+  return Math.round(amount * factor);
+}
+
+/**
+ * Area estimate from HM Land Registry sold prices in the same postcode.
+ * Uses the median of recent comparable sales instead of a made-up multiplier.
+ */
+export async function estimateFromPostcodeSales(params: {
+  postcode: string;
+  propertyType: string;
+  condition?: string;
+}): Promise<{
+  low: number;
+  mid: number;
+  high: number;
+  area: string;
+  salesCount: number;
+} | null> {
+  const postcode = normalisePostcode(params.postcode);
+  if (!postcode) return null;
+
+  const sales = await sparqlQuery(buildPostcodeQuery(postcode, 250));
+  if (sales.length < 3) return null;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - 4);
+  const recent = sales.filter((sale) => Date.parse(sale.date) >= cutoff.getTime());
+  const pool = recent.length >= 3 ? recent : sales;
+
+  const typed = pool.filter((sale) =>
+    matchesPropertyType(sale.propertyType, params.propertyType),
+  );
+  const comps = typed.length >= 3 ? typed : pool;
+  const inflated = comps.map((sale) => inflateToToday(sale.amount, sale.date));
+  if (inflated.length < 3) return null;
+
+  let mid = median(inflated);
+  const condition =
+    params.condition === "needs-work"
+      ? 0.96
+      : params.condition === "excellent"
+        ? 1.04
+        : params.condition === "good"
+          ? 1.02
+          : 1;
+  mid = Math.round(mid * condition);
+
+  let low = percentile(inflated, 0.25);
+  let high = percentile(inflated, 0.75);
+  low = Math.round(low * condition);
+  high = Math.round(high * condition);
+
+  const maxSpread = Math.round(mid * 0.08);
+  if (mid - low > maxSpread) low = mid - maxSpread;
+  if (high - mid > maxSpread) high = mid + maxSpread;
+  if (low >= mid) low = mid - Math.round(mid * 0.05);
+  if (high <= mid) high = mid + Math.round(mid * 0.05);
+
+  return {
+    low,
+    mid,
+    high,
+    area: postcode.split(" ")[0] || postcode,
+    salesCount: inflated.length,
+  };
+}
+
 export function formatGbp(amount: number): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",

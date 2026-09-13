@@ -8,7 +8,6 @@ import {
   type PropertyStatus,
   type PropertyType,
 } from "@/data/properties";
-import { getAdminFirestore } from "@/lib/firebase-admin";
 
 const FILE_PATH = path.join(
   process.env.VERCEL ? "/tmp" : path.join(process.cwd(), ".data"),
@@ -56,34 +55,6 @@ async function readFileStore(): Promise<Property[] | null> {
   }
 }
 
-async function readCloudCatalogue(): Promise<Property[] | null> {
-  const db = getAdminFirestore();
-  if (!db) return null;
-  try {
-    const snap = await db.doc("config/catalogue").get();
-    if (!snap.exists) return null;
-    const raw = snap.data()?.properties;
-    if (!Array.isArray(raw)) return null;
-    const list = raw.filter(isProperty);
-    return list.length ? normalize(list) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function persistCatalogueToCloud(list: Property[]) {
-  const db = getAdminFirestore();
-  if (!db) return;
-  try {
-    await db.doc("config/catalogue").set({
-      properties: list,
-      updatedAt: Date.now(),
-    });
-  } catch {
-    // Cloud copy is best-effort; memory /tmp still hold the list.
-  }
-}
-
 async function writeFileStore(list: Property[]) {
   const next = normalize(list);
   cache = next;
@@ -93,24 +64,19 @@ async function writeFileStore(list: Property[]) {
   } catch {
     // Vercel app disk is read-only; /tmp or memory is enough for this request.
   }
-  await persistCatalogueToCloud(next);
 }
 
 export async function listProperties(): Promise<Property[]> {
   if (cache) return cache;
   const seed = normalize(seedProperties);
-  const stored = (await readCloudCatalogue()) || (await readFileStore());
+  const stored = await readFileStore();
   if (stored) {
     const existing = new Set(stored.map((item) => item.slug));
     const missing = seed.filter((item) => !existing.has(item.slug));
     cache = normalize([...missing, ...stored]);
-    if (missing.length) {
-      await writeFileStore(cache);
-    }
     return cache;
   }
   cache = seed;
-  await writeFileStore(cache);
   return cache;
 }
 

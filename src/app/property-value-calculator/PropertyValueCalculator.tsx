@@ -51,6 +51,7 @@ export function PropertyValueCalculator() {
   );
   const [estimate, setEstimate] = useState<MarketEstimate | null>(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const beds = useMemo(() => Number(bedrooms), [bedrooms]);
 
@@ -100,7 +101,7 @@ export function PropertyValueCalculator() {
     setStep("result");
   }
 
-  function onDetails(event: FormEvent<HTMLFormElement>) {
+  async function onDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formattedAddress = formatUkAddressLine(address);
     const formattedPostcode = formatUkPostcode(postcode);
@@ -112,8 +113,10 @@ export function PropertyValueCalculator() {
 
     setAddress(formattedAddress);
     setPostcode(formattedPostcode);
+    setBusy(true);
+    setError("");
 
-    const result = estimateMarketValue({
+    let result = estimateMarketValue({
       postcode: formattedPostcode,
       propertyType,
       bedrooms: beds,
@@ -121,11 +124,37 @@ export function PropertyValueCalculator() {
       hasGarden,
       hasParking,
     });
+
+    try {
+      const res = await fetch("/api/valuation-estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postcode: formattedPostcode,
+          propertyType,
+          bedrooms: beds,
+          condition,
+          hasGarden,
+          hasParking,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        estimate?: MarketEstimate;
+      };
+      if (res.ok && data.ok && data.estimate) {
+        result = data.estimate;
+      }
+    } catch {
+      // Keep the local guide if Land Registry is unavailable.
+    } finally {
+      setBusy(false);
+    }
+
     if (!result) {
       setError("Enter a valid UK postcode and bedrooms.");
       return;
     }
-    setError("");
     setPendingEstimate(result);
 
     if (session) {
@@ -299,8 +328,12 @@ export function PropertyValueCalculator() {
 
           {error ? <p className="text-sm text-error">{error}</p> : null}
 
-          <button type="submit" className="btn-gold px-8 py-3 text-sm uppercase">
-            Continue to unlock estimate
+          <button
+            type="submit"
+            disabled={busy}
+            className="btn-gold px-8 py-3 text-sm uppercase disabled:opacity-70"
+          >
+            {busy ? "Checking sold prices…" : "Continue to unlock estimate"}
           </button>
         </form>
       ) : null}
@@ -387,7 +420,7 @@ export function PropertyValueCalculator() {
         <ol className="mt-6 space-y-4 text-sm leading-relaxed text-[color:var(--muted)]">
             <li>
               <span className="text-[color:var(--gold)]">1.</span> Enter a full
-              UK postcode (and property details)
+              UK postcode — we check recent HM Land Registry sold prices first
             </li>
             <li>
               <span className="text-[color:var(--gold)]">2.</span> Enter your
@@ -445,9 +478,11 @@ function ResultPanel({
         </span>
       </p>
       <p className="mx-auto mt-3 max-w-md text-xs text-[color:var(--muted)]">
-        {estimate.confidence === "local"
-          ? `Based on local guidance for the ${estimate.area} postcode area.`
-          : "Wider regional guide — book a valuation for a localised figure."}
+        {estimate.source === "sold-prices"
+          ? `Based on ${estimate.salesCount ?? "recent"} HM Land Registry sold prices in ${estimate.area}.`
+          : estimate.confidence === "local"
+            ? `Guide figure for the ${estimate.area} postcode area when sold-price records are thin.`
+            : "Wider regional guide — book a valuation for a localised figure."}
       </p>
       <div className="mt-8 space-y-3">
         <Link
