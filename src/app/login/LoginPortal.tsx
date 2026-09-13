@@ -18,7 +18,7 @@ type Mode = "login" | "register";
 export function LoginPortal() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, register, session, ready, usingFirebase, isAdmin } = useAuth();
+  const { login, register, session, ready, isAdmin } = useAuth();
   const nextPath = searchParams.get("next") || (isAdmin ? "/admin" : "/account");
 
   const [mode, setMode] = useState<Mode>("login");
@@ -175,11 +175,6 @@ export function LoginPortal() {
             <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
               Save properties, track enquiries, and manage your moving journey
               with {site.name}.
-            </p>
-            <p className="mt-4 text-xs leading-relaxed text-[color:var(--muted)]">
-              {usingFirebase
-                ? "Secure login is powered by Google Firebase."
-                : "Demo mode: accounts are stored in this browser until Firebase is connected on go-live."}
             </p>
             <p className="mt-8 text-sm text-[color:var(--muted)]">
               Need help? Call{" "}

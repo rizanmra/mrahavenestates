@@ -21,7 +21,7 @@ import type { PropertyEnquiryRecord } from "@/lib/property-enquiry";
 
 const FIRESTORE_TIMEOUT_MS = 10000;
 const FIRESTORE_SETUP_ERROR =
-  "Cloud Firestore is not set up (or blocked). In Firebase Console → Build → Firestore Database → Create database, then paste the rules from GO_LIVE.md.";
+  "Could not reach your account just now. Please try again.";
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -241,7 +241,7 @@ export async function firebaseRegister(input: {
         throw new Error(FIRESTORE_SETUP_ERROR);
       }
       throw new Error(
-        "Account created, but your phone could not be saved. Check Firestore is set up, then try registering again or contact support.",
+        "Account created, but your phone could not be saved. Please try again or call us.",
       );
     }
 
@@ -365,7 +365,7 @@ export async function firebaseToggleSave(
         : "";
     if (code === "permission-denied") {
       throw new Error(
-        "Firestore blocked this save. Update Firestore rules (see GO_LIVE.md) so users can write their own users/{userId} document.",
+        "Could not update your shortlist. Please try again.",
       );
     }
     throw new Error(

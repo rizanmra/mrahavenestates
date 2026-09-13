@@ -39,7 +39,7 @@ export function SavePropertyButton({ slug }: { slug: string }) {
             window.setTimeout(() => {
               reject(
                 new Error(
-                  "Saving timed out. Create Cloud Firestore in Firebase Console (Build → Firestore), add the GO_LIVE.md rules, then try again.",
+                  "Could not save this property just now. Please try again.",
                 ),
               );
             }, 12000);

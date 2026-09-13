@@ -16,7 +16,15 @@ export function RemovalSection() {
             sizes="(max-width: 1200px) 100vw, 1200px"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--navy)]/90 to-transparent" />
-          <div className="absolute inset-0 flex items-center px-8 md:px-16">
+          <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-10">
+            <div className="flex justify-end">
+              <Link
+                href="/contact?reason=removals"
+                className="btn-gold px-6 py-3 text-xs font-medium tracking-wide uppercase md:px-8 md:text-sm"
+              >
+                Get a quote
+              </Link>
+            </div>
             <div>
               <h2 className="font-display text-4xl text-white md:text-5xl">
                 Removal &amp; relocation

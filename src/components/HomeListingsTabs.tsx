@@ -6,14 +6,13 @@ import { useState } from "react";
 import { siteImages } from "@/data/hero-images";
 import type { Property } from "@/data/properties";
 
-type Tab = "sale" | "rent" | "conveyancing" | "mortgages" | "removals";
+type Tab = "sale" | "rent" | "conveyancing" | "mortgages";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "sale", label: "Properties for sale" },
   { id: "rent", label: "Properties for rent" },
   { id: "conveyancing", label: "Conveyancing" },
   { id: "mortgages", label: "Mortgages" },
-  { id: "removals", label: "Removals" },
 ];
 
 export function HomeListingsTabs({
@@ -97,19 +96,6 @@ export function HomeListingsTabs({
             quoteHref="/contact?reason=mortgage"
             quoteLabel="Get a quote"
             moreHref="/mortgages"
-            moreLabel="Find out more"
-          />
-        ) : null}
-
-        {tab === "removals" ? (
-          <ServiceQuotePanel
-            title="Removals"
-            copy="Licensed packing and removals across Bradford and West Yorkshire — from studio flats to full family moves."
-            image={siteImages.removals}
-            imageAlt="Removal and packing services"
-            quoteHref="/contact?reason=removals"
-            quoteLabel="Get a quote"
-            moreHref="/removal-services"
             moreLabel="Find out more"
           />
         ) : null}
