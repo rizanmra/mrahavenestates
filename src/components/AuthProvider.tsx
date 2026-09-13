@@ -369,9 +369,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: Boolean(session?.isAdmin),
       usingFirebase,
       login: async (email, password) => {
-        if (!usingFirebase) {
-          throw new Error("Accounts are stored in Firebase. Add the Firebase keys and try again.");
-        }
         const epoch = ++authEpoch.current;
         const next = await firebaseLogin(email.trim().toLowerCase(), password);
         if (next.isAdmin) await attachStaffCookieFromToken();
@@ -381,9 +378,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return next;
       },
       register: async (input) => {
-        if (!usingFirebase) {
-          throw new Error("Accounts are stored in Firebase. Add the Firebase keys and try again.");
-        }
         const epoch = ++authEpoch.current;
         const next = await firebaseRegister(input);
         if (next.isAdmin) await attachStaffCookieFromToken();

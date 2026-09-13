@@ -33,6 +33,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    match /config/admin {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && !exists(/databases/$(database)/documents/config/admin);
+    }
+
     match /propertyEnquiries/{enquiryId} {
       // Public can submit; only staff can read the full inbox.
       allow create: if true;

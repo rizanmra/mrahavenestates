@@ -16,33 +16,37 @@ export type FirebasePublicConfig = {
   appId: string;
 };
 
-function readConfig(): FirebasePublicConfig | null {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+/** Public web app config for mra-haven-estates-7a175. Safe to ship in the client. */
+const PROJECT_CONFIG: FirebasePublicConfig = {
+  apiKey: "AIzaSyDboKVyms5DbYarOVbj_V8_AIImCPupLTU",
+  authDomain: "mra-haven-estates-7a175.firebaseapp.com",
+  projectId: "mra-haven-estates-7a175",
+  storageBucket: "mra-haven-estates-7a175.firebasestorage.app",
+  messagingSenderId: "320984899387",
+  appId: "1:320984899387:web:3df31e699071c5bf9e611e",
+};
 
-  if (
-    !apiKey ||
-    !authDomain ||
-    !projectId ||
-    !storageBucket ||
-    !messagingSenderId ||
-    !appId
-  ) {
-    return null;
+function readConfig(): FirebasePublicConfig {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
+  const messagingSenderId =
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim();
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();
+
+  if (apiKey && authDomain && projectId && appId) {
+    return {
+      apiKey,
+      authDomain,
+      projectId,
+      storageBucket: storageBucket || PROJECT_CONFIG.storageBucket,
+      messagingSenderId: messagingSenderId || PROJECT_CONFIG.messagingSenderId,
+      appId,
+    };
   }
 
-  return {
-    apiKey,
-    authDomain,
-    projectId,
-    storageBucket,
-    messagingSenderId,
-    appId,
-  };
+  return PROJECT_CONFIG;
 }
 
 let app: FirebaseApp | null = null;
@@ -50,7 +54,7 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 
 export function isFirebaseConfigured(): boolean {
-  return readConfig() !== null;
+  return Boolean(readConfig().apiKey && readConfig().projectId);
 }
 
 export function getFirebaseApp(): FirebaseApp | null {
