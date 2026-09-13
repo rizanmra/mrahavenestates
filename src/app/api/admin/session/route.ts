@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isReservedStaffEmail } from "@/lib/admin";
 import {
   claimOrGetAdmin,
   getAssignedAdmin,
@@ -28,10 +29,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false });
   }
   const assigned = await getAssignedAdmin();
-  if (!assigned || assigned.email !== email) {
+  if (
+    !isReservedStaffEmail(email) &&
+    (!assigned || assigned.email !== email)
+  ) {
     return NextResponse.json({ ok: false });
   }
-  return NextResponse.json(staffProfile(email, assigned.userId));
+  return NextResponse.json(
+    staffProfile(email, assigned?.userId || "staff"),
+  );
 }
 
 export async function POST(request: Request) {

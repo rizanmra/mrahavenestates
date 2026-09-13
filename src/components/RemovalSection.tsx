@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { removalFeatures } from "@/data/site";
 import { siteImages } from "@/data/hero-images";
 
@@ -18,19 +18,19 @@ export function RemovalSection() {
           <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--navy)]/90 to-transparent" />
           <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-10">
             <div className="flex justify-end">
-              <Link
+              <PublicInboxLink
                 href="/contact?reason=removals"
                 className="btn-gold px-6 py-3 text-xs font-medium tracking-wide uppercase md:px-8 md:text-sm"
               >
                 Get a quote
-              </Link>
+              </PublicInboxLink>
             </div>
             <div>
               <h2 className="font-display text-4xl text-white md:text-5xl">
                 Removal &amp; relocation
               </h2>
               <p className="mt-4 max-w-md text-sm text-white/80">
-                Licensed, insured, and trusted across Bradford and West Yorkshire.
+                Licensed, insured, and trusted nationwide across the UK.
               </p>
             </div>
           </div>
@@ -52,12 +52,12 @@ export function RemovalSection() {
                 {"link" in feature && feature.link ? (
                   <>
                     {" "}
-                    <Link
+                    <PublicInboxLink
                       href={feature.link}
                       className="text-[color:var(--gold)] underline underline-offset-4"
                     >
                       {feature.linkLabel}
-                    </Link>
+                    </PublicInboxLink>
                     .
                   </>
                 ) : null}

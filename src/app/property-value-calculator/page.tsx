@@ -6,20 +6,20 @@ import { PropertyValueCalculator } from "./PropertyValueCalculator";
 export const metadata: Metadata = {
   title: "How Much Is My House Worth? | Free Property Value Calculator",
   description:
-    "Enter your address and get a free estimated market value for homes in Bradford and West Yorkshire. Instant online house price calculator — then book a free valuation.",
+    "Enter your address and get a free estimated market value for homes nationwide across the UK. Instant online house price calculator — then book a free valuation.",
   keywords: [
     "how much is my house worth",
     "property value calculator",
     "house price estimate by address",
-    "estimated market value Bradford",
+    "estimated market value UK",
     "free house valuation",
-    "property valuation West Yorkshire",
+    "property valuation nationwide",
     "what is my house worth",
   ],
   openGraph: {
     title: "How Much Is My House Worth? | MRA Haven Estates",
     description:
-      "Enter your address for an instant estimated market value. Soft opt-in, then book a free valuation with our Bradford team.",
+      "Enter your address for an instant estimated market value. Soft opt-in, then book a free valuation with our nationwide team.",
     type: "website",
   },
 };
@@ -35,7 +35,7 @@ export default function PropertyValueCalculatorPage() {
         <p className="mx-auto max-w-3xl text-center text-lg leading-relaxed text-[color:var(--muted)]">
           Looking for a rough <strong>estimated market value</strong>? Enter your
           property address and details. We&apos;ll give you an indicative range
-          for Bradford &amp; West Yorkshire. Enter your email to unlock the
+          nationwide across the UK. Enter your email to unlock the
           figure — a soft opt-in so we can help if you want a free in-person
           valuation.
         </p>
@@ -57,10 +57,9 @@ export default function PropertyValueCalculatorPage() {
           </p>
           <h2 className="font-display text-2xl text-white">Areas we cover</h2>
           <p>
-            Bradford (BD), Leeds (LS), Halifax (HX), Huddersfield (HD), Wakefield
-            (WF) and surrounding West Yorkshire postcodes. Call{" "}
+            We cover properties nationwide across the UK. Call{" "}
             <Link href="/branches" className="text-[color:var(--gold)]">
-              our branch
+              our team
             </Link>{" "}
             if you&apos;re unsure whether we cover your street.
           </p>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { jobListings } from "@/data/careers";
 import { siteImages } from "@/data/hero-images";
 
 export const metadata: Metadata = {
   title: "Careers",
-  description: "Join the MRA Haven Estates team in Bradford.",
+  description: "Join the MRA Haven Estates team serving clients nationwide across the UK.",
 };
 
 export default function CareersPage() {
@@ -25,7 +25,7 @@ export default function CareersPage() {
         <div className="relative z-10 mx-auto max-w-4xl px-6 py-16 text-center lg:px-10">
           <h1 className="font-display text-5xl text-white md:text-6xl">Careers</h1>
           <p className="mt-6 text-lg text-white/85">
-            Build your career with a growing estate agency rooted in Bradford.
+            Build your career with a growing estate agency serving clients nationwide across the UK.
           </p>
         </div>
       </section>
@@ -54,12 +54,12 @@ export default function CareersPage() {
             </div>
           ))}
 
-          <Link
+          <PublicInboxLink
             href="/contact?reason=careers"
             className="btn-gold inline-block px-8 py-3 text-sm uppercase"
           >
             Apply now
-          </Link>
+          </PublicInboxLink>
         </div>
       </section>
     </>

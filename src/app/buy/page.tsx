@@ -5,7 +5,7 @@ import { InfoBody, PageHero } from "@/components/PageTemplate";
 export const metadata: Metadata = {
   title: "Buy a Property",
   description:
-    "MRA Haven Estates currently focuses on lettings. Browse homes to rent in Bradford and West Yorkshire.",
+    "MRA Haven Estates currently focuses on lettings. Browse homes to rent nationwide across the UK.",
 };
 
 /** Honest landing page — we do not offer a sales catalogue for buyers. */
@@ -23,7 +23,7 @@ export default function BuyPage() {
         }}
       >
         <p>
-          We specialise in lettings across Bradford and West Yorkshire. If you
+          We specialise in lettings nationwide across the UK. If you
           are looking for a place to live, you can search our current rental
           listings and enquire about a specific property.
         </p>

@@ -14,11 +14,28 @@ import {
 
 type Mode = "login" | "register";
 
+function clientNextPath(next: string | null): string {
+  if (
+    next &&
+    next.startsWith("/") &&
+    !next.startsWith("//") &&
+    !next.startsWith("/admin")
+  ) {
+    return next;
+  }
+  return "/account";
+}
+
+function afterAuthPath(isStaff: boolean, next: string | null): string {
+  return isStaff ? "/admin" : clientNextPath(next);
+}
+
 export function LoginPortal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, register, session, ready, isAdmin } = useAuth();
-  const nextPath = searchParams.get("next") || (isAdmin ? "/admin" : "/account");
+  const requestedNext = searchParams.get("next");
+  const nextPath = afterAuthPath(isAdmin, requestedNext);
 
   const [mode, setMode] = useState<Mode>("login");
   const [error, setError] = useState("");
@@ -113,7 +130,7 @@ export function LoginPortal() {
         String(form.get("email") ?? ""),
         String(form.get("password") ?? ""),
       );
-      router.replace(signedIn.isAdmin ? "/admin" : nextPath);
+      router.replace(afterAuthPath(signedIn.isAdmin === true, requestedNext));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in.");
     } finally {
@@ -154,7 +171,7 @@ export function LoginPortal() {
         phone: formatPhoneForStorage(phone),
         password,
       });
-      router.replace(created.isAdmin ? "/admin" : nextPath);
+      router.replace(afterAuthPath(created.isAdmin === true, requestedNext));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account.");
     } finally {
@@ -168,14 +185,15 @@ export function LoginPortal() {
         <div className="mx-auto flex max-w-5xl flex-col gap-12 lg:gap-14">
           <div className="max-w-2xl">
             <p className="text-xs tracking-[0.35em] text-[color:var(--gold)] uppercase">
-              Client portal
+              {isAdmin ? "Staff portal" : "Client portal"}
             </p>
             <h1 className="font-display mt-3 text-5xl text-white md:text-6xl">
               {heading}
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
-              Save properties, track enquiries, and manage your moving journey
-              with {site.name}.
+              {isAdmin
+                ? `Sign in to manage enquiries, listings, and the ${site.name} inbox.`
+                : `Save properties, track enquiries, and manage your moving journey with ${site.name}.`}
             </p>
             <p className="mt-8 text-sm text-[color:var(--muted)]">
               Need help? Call{" "}

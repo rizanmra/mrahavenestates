@@ -27,7 +27,7 @@ const areas = [
 
 export const metadata: Metadata = {
   title: "Area Guides",
-  description: "Local area guides for Bradford and West Yorkshire.",
+  description: "Area guides for neighbourhoods we serve nationwide across the UK.",
 };
 
 export default function AreaGuidesPage() {
@@ -35,7 +35,7 @@ export default function AreaGuidesPage() {
     <>
       <PageImageHero
         title="Area Guides"
-        subtitle="Discover the neighbourhoods we know best."
+        subtitle="Discover neighbourhoods we serve nationwide across the UK."
         image={siteImages.areaGuides}
       />
       <section className="px-6 py-16 lg:px-10">
@@ -52,9 +52,9 @@ export default function AreaGuidesPage() {
       </section>
       <InfoBody cta={{ label: "Search properties", href: "/properties" }}>
         <p>
-          Moving to a new area? Our local experts can advise on schools,
-          transport, and street-by-street market trends. Contact us for a
-          personalised area briefing.
+          Moving to a new area? Our team can advise on schools, transport,
+          and street-by-street market trends nationwide across the UK. Contact
+          us for a personalised area briefing.
         </p>
       </InfoBody>
     </>

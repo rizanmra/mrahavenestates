@@ -6,6 +6,7 @@ import {
 } from "@/lib/admin-session";
 import { recordClientEnquiryStatusUpdate } from "@/lib/client-enquiry-updates";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
+import { isReservedStaffEmail } from "@/lib/admin";
 import {
   isPropertyEnquiryRecord,
   type PropertyEnquiryRecord,
@@ -226,7 +227,11 @@ export async function claimOrGetAdmin(
       await writeAssignedAdminWithRest(existing, idToken).catch(() => false);
     }
   }
-  return { isAdmin: matchesAdmin(existing, user), admin: existing };
+  return {
+    isAdmin:
+      isReservedStaffEmail(user.email) || matchesAdmin(existing, user),
+    admin: existing,
+  };
 }
 
 export async function requireAdminFromRequest(
@@ -237,7 +242,11 @@ export async function requireAdminFromRequest(
   const assigned = await getAssignedAdmin(token || undefined);
 
   const cookieEmail = verifyStaffSessionToken(readStaffSessionCookie(request) || "");
-  if (cookieEmail && assigned && cookieEmail === assigned.email) {
+  if (
+    cookieEmail &&
+    (isReservedStaffEmail(cookieEmail) ||
+      (assigned && cookieEmail === assigned.email))
+  ) {
     return { ok: true, email: cookieEmail };
   }
 
@@ -387,32 +396,39 @@ async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boole
   const projectId = firebaseProjectId();
   if (!projectId) return false;
   const token = await staffIdToken();
+  const key = encodeURIComponent(firebaseApiKey());
+  const docPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}/${encodeURIComponent(record.id)}?key=${key}`;
+  const createPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${key}`;
+  const body = JSON.stringify(toFirestoreDocument(record));
 
-  const post = async (withAuth: boolean) => {
+  const send = async (url: string, method: "PATCH" | "POST", withAuth: boolean) => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
     if (withAuth && token) {
       headers.Authorization = `Bearer ${token}`;
     }
-    return fetch(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${encodeURIComponent(firebaseApiKey())}`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(toFirestoreDocument(record)),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
+    return fetch(url, {
+      method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(15000),
+    });
   };
 
-  let res = await post(false);
+  let res = await send(docPath, "PATCH", Boolean(token));
+  if (res.status === 404) {
+    res = await send(createPath, "POST", Boolean(token));
+  }
   if (!res.ok && token && (res.status === 401 || res.status === 403)) {
-    res = await post(true);
+    res = await send(docPath, "PATCH", true);
+    if (res.status === 404) {
+      res = await send(createPath, "POST", true);
+    }
   }
   if (!res.ok) {
-    const body = await res.text();
-    console.warn("[admin] firestore rest write failed", res.status, body);
+    const text = await res.text();
+    console.warn("[admin] firestore rest write failed", res.status, text);
     return false;
   }
   return true;
@@ -448,14 +464,46 @@ async function listFromFirestoreRest(): Promise<PropertyEnquiryRecord[]> {
     .filter((item): item is PropertyEnquiryRecord => Boolean(item));
 }
 
+function enquiryRank(item: PropertyEnquiryRecord) {
+  return (
+    (item.repliedAt ?? 0) +
+    (item.reply ? 1 : 0) +
+    (item.status === "answered" ? 1 : 0)
+  );
+}
+
 function mergeRecords(groups: PropertyEnquiryRecord[][]) {
   const map = new Map<string, PropertyEnquiryRecord>();
   for (const group of groups) {
     for (const item of group) {
-      map.set(item.id, item);
+      const existing = map.get(item.id);
+      if (!existing || enquiryRank(item) >= enquiryRank(existing)) {
+        map.set(item.id, existing ? { ...existing, ...item } : item);
+      }
     }
   }
   return [...map.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function listInboxRowsForEmail(
+  email: string,
+): Promise<PropertyEnquiryRecord[]> {
+  const needle = email.trim().toLowerCase();
+  if (!needle) return [];
+  const records = await listPropertyEnquiries();
+  return records.filter((item) => item.email.trim().toLowerCase() === needle);
+}
+
+export async function listInboxStatusUpdatesForEmail(email: string) {
+  const rows = await listInboxRowsForEmail(email);
+  return rows
+    .filter((item) => item.reply || item.status === "answered")
+    .map((item) => ({
+      sourceEnquiryId: item.id,
+      status: "answered" as const,
+      reply: item.reply || "",
+      repliedAt: item.repliedAt || item.createdAt,
+    }));
 }
 
 export async function savePropertyEnquiry(
@@ -619,14 +667,6 @@ export async function replyToPropertyEnquiry(input: {
   }
 
   const repliedAt = Date.now();
-  await sendReplyEmail({
-    to: current.email,
-    name: current.name,
-    reply,
-    propertyTitle: current.property.title,
-    originalMessage: current.message,
-  });
-
   const next: PropertyEnquiryRecord = {
     ...current,
     read: true,
@@ -647,6 +687,18 @@ export async function replyToPropertyEnquiry(input: {
     });
   } catch (error) {
     console.warn("[admin] client enquiry status update skipped", error);
+  }
+
+  try {
+    await sendReplyEmail({
+      to: current.email,
+      name: current.name,
+      reply,
+      propertyTitle: current.property.title,
+      originalMessage: current.message,
+    });
+  } catch (error) {
+    console.warn("[admin] reply email skipped", error);
   }
 
   return next;

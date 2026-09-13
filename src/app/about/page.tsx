@@ -13,7 +13,7 @@ export default function AboutPage() {
     <>
       <PageImageHero
         title="About MRA Haven Estates"
-        subtitle="Helping people move across Bradford and West Yorkshire."
+        subtitle="Helping people move nationwide across the UK."
         image={siteImages.about}
       />
       <section className="px-6 py-16 lg:px-10">
@@ -28,8 +28,8 @@ export default function AboutPage() {
               removals and free valuations, we offer a complete moving solution.
             </p>
             <p>
-              Based in Bradford, we know our local market inside out — and we
-              are proud to support the communities we serve.
+              We serve clients nationwide across the UK — and we are proud to
+              support the communities we work with.
             </p>
           </div>
           <div className="relative aspect-[4/3] overflow-hidden">

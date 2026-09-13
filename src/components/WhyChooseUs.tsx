@@ -1,4 +1,4 @@
-import { whyChooseUs } from "@/data/site";
+import { whyChooseUs, whyChooseUsIntro } from "@/data/site";
 
 export function WhyChooseUs() {
   return (
@@ -9,9 +9,7 @@ export function WhyChooseUs() {
             Why choose MRA Haven Estates?
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
-            We are a trusted estate agent serving Bradford and West Yorkshire.
-            With a dedicated team of property professionals, we offer a complete
-            moving solution — from sales and lettings to removals and valuations.
+            {whyChooseUsIntro}
           </p>
         </div>
         <ul className="mt-12 space-y-4 lg:mt-0">

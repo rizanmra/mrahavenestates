@@ -7,7 +7,7 @@ export type PropertyTypeEstimate =
 
 export type PropertyCondition = "needs-work" | "average" | "good" | "excellent";
 
-/** Indicative Bradford / West Yorkshire outcode baselines (guide only). */
+/** Indicative UK outcode baselines (guide only). */
 const postcodeBase: Record<string, number> = {
   BD1: 195_000,
   BD2: 185_000,

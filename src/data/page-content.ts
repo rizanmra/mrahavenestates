@@ -16,7 +16,7 @@ export const pages: Record<string, PageContent> = {
     image: siteImages.marketing,
     paragraphs: [
       "Property auctions offer a fast, transparent route to purchase — ideal for investors, developers, and buyers who know what they want.",
-      "MRA Haven Estates works with leading auction houses across West Yorkshire. We guide you through the legal pack, guide prices, and completion timelines so there are no surprises on the day.",
+      "MRA Haven Estates works with leading auction houses nationwide across the UK. We guide you through the legal pack, guide prices, and completion timelines so there are no surprises on the day.",
     ],
     bullets: [
       "Access to residential and commercial auction lots",
@@ -67,9 +67,9 @@ export const pages: Record<string, PageContent> = {
       "For emergencies such as gas leaks, flooding, or loss of heating, call our out-of-hours line immediately.",
     ],
     bullets: [
-      "Online repair reporting with photo upload",
+      "Report repairs online or by phone",
       "24/7 emergency line for urgent issues",
-      "Vetted contractor network across Bradford",
+      "Vetted contractor network nationwide across the UK",
       "Full audit trail for landlords",
     ],
     cta: { label: "Contact repairs team", href: "/contact?reason=repairs" },
@@ -112,7 +112,7 @@ export const pages: Record<string, PageContent> = {
     image: siteImages.rent,
     paragraphs: [
       "Contents insurance covers your belongings against theft, fire, and accidental damage. While not always mandatory, we strongly recommend cover from day one of your tenancy.",
-      "We can introduce you to trusted insurance partners offering competitive premiums for tenants across West Yorkshire.",
+      "We can introduce you to trusted insurance partners offering competitive premiums for tenants nationwide across the UK.",
     ],
     bullets: [
       "Cover for furniture, electronics, and personal items",
@@ -235,16 +235,16 @@ export const pages: Record<string, PageContent> = {
   },
   "about/community": {
     title: "Supporting Our Communities",
-    subtitle: "Local roots, lasting impact across Bradford and beyond.",
+    subtitle: "Nationwide roots, lasting impact across the UK.",
     image: siteImages.about,
     paragraphs: [
-      "MRA Haven Estates is proud to call Bradford home. We sponsor local sports clubs, support food banks, and partner with schools on career workshops for young people interested in property.",
+      "MRA Haven Estates is proud to serve communities nationwide across the UK. We sponsor sports clubs, support food banks, and partner with schools on career workshops for young people interested in property.",
       "Every successful move contributes to stronger neighbourhoods — and we reinvest in the communities that trust us.",
     ],
     bullets: [
       "Annual charity fundraising events",
       "Sponsorship of local youth programmes",
-      "Staff volunteer days across West Yorkshire",
+      "Staff volunteer days nationwide across the UK",
       "Sustainable moving — recycling packing materials",
     ],
     cta: { label: "Partner with us", href: "/contact?reason=general" },

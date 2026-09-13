@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 
 export function PageImageHero({
   title,
@@ -88,12 +88,12 @@ export function InfoBody({
           </ul>
         ) : null}
         {cta ? (
-          <Link
+          <PublicInboxLink
             href={cta.href}
             className="btn-gold mt-8 inline-block px-8 py-3 text-sm uppercase"
           >
             {cta.label}
-          </Link>
+          </PublicInboxLink>
         ) : null}
       </div>
     </section>

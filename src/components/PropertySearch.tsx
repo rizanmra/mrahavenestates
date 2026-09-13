@@ -58,7 +58,7 @@ export function PropertySearch() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Bradford or BD8"
+              placeholder="e.g. Manchester or M1"
               className="w-full border-b border-[color:var(--line)] bg-transparent py-2 text-white outline-none placeholder:text-[color:var(--muted)]/60 focus:border-[color:var(--gold)]"
             />
           </label>

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { formatGbp, type SoldTransaction } from "@/lib/land-registry";
 import { validateEmail } from "@/lib/form-validation";
+import { sendInboxEnquiry } from "@/lib/send-inbox-enquiry";
 
 type Step = "intro" | "address" | "email" | "result";
 
@@ -36,12 +37,29 @@ export default function FreeValuationForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function revealResult(data: LookupSuccess) {
+  function revealResult(data: LookupSuccess, leadEmail?: string) {
     if (!isAdmin) {
-      recordEnquiry(
-        "valuation",
-        `Land Registry price unlock: ${data.matchedAddress}`,
-      );
+      const summary = `Land Registry price unlock: ${data.matchedAddress}`;
+      const contactEmail = leadEmail || session?.email || email;
+      if (!contactEmail) {
+        if (session) recordEnquiry("valuation", summary);
+        setStep("result");
+        return;
+      }
+      void sendInboxEnquiry({
+        name: session?.name || "Website visitor",
+        email: contactEmail,
+        phone: session?.phone,
+        message: summary,
+        reason: "valuation",
+      }).then((sent) => {
+        if (session) {
+          recordEnquiry("valuation", summary, {
+            sourceEnquiryId: sent.id,
+            status: "open",
+          });
+        }
+      });
     }
     setStep("result");
   }
@@ -100,7 +118,7 @@ export default function FreeValuationForm() {
         setError(data.error || "Please enter a valid email address.");
         return;
       }
-      revealResult(pending);
+      revealResult(pending, email.trim().toLowerCase());
     } catch {
       setError("Email check failed. Please try again.");
     } finally {

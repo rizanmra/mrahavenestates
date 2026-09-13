@@ -1,6 +1,6 @@
 # MRA Haven Estates
 
-Custom Next.js website for MRA Haven Estates — sales, lettings, removals and valuations across Bradford and West Yorkshire.
+Custom Next.js website for MRA Haven Estates — sales, lettings, removals and valuations nationwide across the UK.
 
 ## Run locally
 

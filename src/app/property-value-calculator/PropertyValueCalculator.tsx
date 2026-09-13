@@ -11,6 +11,7 @@ import {
   type PropertyTypeEstimate,
   type MarketEstimate,
 } from "@/lib/market-estimate";
+import { sendInboxEnquiry } from "@/lib/send-inbox-enquiry";
 import { saveValuationLead } from "@/lib/valuation-leads";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -86,12 +87,21 @@ export function PropertyValueCalculator() {
         marketingOptIn,
       });
 
-      if (session) {
-        recordEnquiry(
-          "valuation",
-          `Online estimate ${formatGbp(result.mid)} — ${displayAddress}, ${displayPostcode} (${propertyTypeLabels[propertyType]}, ${beds} ${beds === 1 ? "bedroom" : "bedrooms"})`,
-        );
-      }
+      const summary = `Online estimate ${formatGbp(result.mid)} — ${displayAddress}, ${displayPostcode} (${propertyTypeLabels[propertyType]}, ${beds} ${beds === 1 ? "bedroom" : "bedrooms"})`;
+      void sendInboxEnquiry({
+        name: lead.name?.trim() || session?.name || "Website visitor",
+        email: lead.email || session?.email || "",
+        phone: lead.phone || session?.phone,
+        message: summary,
+        reason: "valuation",
+      }).then((sent) => {
+        if (session) {
+          recordEnquiry("valuation", summary, {
+            sourceEnquiryId: sent.id,
+            status: "open",
+          });
+        }
+      });
     }
 
     setAddress(displayAddress);
@@ -233,7 +243,7 @@ export function PropertyValueCalculator() {
               onBlur={() => {
                 if (address.trim()) setAddress(formatUkAddressLine(address));
               }}
-              placeholder="e.g. 12 Oak Street, Bradford"
+              placeholder="e.g. 12 Oak Street, Manchester"
               autoComplete="street-address"
               className={fieldClass}
             />

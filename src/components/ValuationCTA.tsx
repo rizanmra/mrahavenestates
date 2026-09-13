@@ -13,6 +13,7 @@ import {
   type PropertyTypeEstimate,
   type MarketEstimate,
 } from "@/lib/market-estimate";
+import { sendInboxEnquiry } from "@/lib/send-inbox-enquiry";
 import { saveValuationLead } from "@/lib/valuation-leads";
 import {
   formatUkAddressLine,
@@ -132,12 +133,21 @@ export function ValuationCTA() {
         marketingOptIn,
       });
 
-      if (session) {
-        recordEnquiry(
-          "valuation",
-          `Homepage estimate ${formatGbp(result.mid)} — ${displayAddress}, ${displayPostcode}`,
-        );
-      }
+      const summary = `Homepage estimate ${formatGbp(result.mid)} — ${displayAddress}, ${displayPostcode}`;
+      void sendInboxEnquiry({
+        name: lead.name?.trim() || session?.name || "Website visitor",
+        email: lead.email || session?.email || "",
+        phone: lead.phone || session?.phone,
+        message: summary,
+        reason: "valuation",
+      }).then((sent) => {
+        if (session) {
+          recordEnquiry("valuation", summary, {
+            sourceEnquiryId: sent.id,
+            status: "open",
+          });
+        }
+      });
     }
 
     setAddress(displayAddress);
@@ -256,9 +266,9 @@ export function ValuationCTA() {
               Want to know what your property is worth?
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[color:var(--muted)]">
-              Get an instant estimated market value for your home in Bradford
-              &amp; West Yorkshire — one of the clearest ways to start your
-              next move with MRA Haven Estates.
+              Get an instant estimated market value for your home anywhere in
+              the UK — one of the clearest ways to start your next move with
+              MRA Haven Estates.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
               <button
@@ -347,7 +357,7 @@ export function ValuationCTA() {
                   onBlur={() => {
                     if (address.trim()) setAddress(formatUkAddressLine(address));
                   }}
-                  placeholder="e.g. 12 Oak Street, Bradford"
+                  placeholder="e.g. 12 Oak Street, Manchester"
                   autoComplete="street-address"
                   className={fieldClass}
                 />

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { lookupFirebaseEmail } from "@/lib/admin-server";
+import {
+  listInboxStatusUpdatesForEmail,
+  lookupFirebaseEmail,
+} from "@/lib/admin-server";
 import { listClientEnquiryStatusUpdates } from "@/lib/client-enquiry-updates";
 
 /**
@@ -45,7 +48,21 @@ export async function GET(request: Request) {
     );
   }
 
-  const updates = await listClientEnquiryStatusUpdates(email);
+  const [fileUpdates, inboxUpdates] = await Promise.all([
+    listClientEnquiryStatusUpdates(email),
+    listInboxStatusUpdatesForEmail(email),
+  ]);
+  const merged = new Map<
+    string,
+    { sourceEnquiryId: string; status: "answered" | "closed"; reply: string; repliedAt: number }
+  >();
+  for (const item of [...fileUpdates, ...inboxUpdates]) {
+    const prev = merged.get(item.sourceEnquiryId);
+    if (!prev || item.repliedAt >= prev.repliedAt) {
+      merged.set(item.sourceEnquiryId, item);
+    }
+  }
+  const updates = [...merged.values()];
   const scoped =
     claimedIds.size > 0
       ? updates.filter((item) => claimedIds.has(item.sourceEnquiryId))

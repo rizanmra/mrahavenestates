@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { BrandLogo } from "@/components/BrandLogo";
-import { mainNav, utilityLinks, type NavItem } from "@/data/navigation";
+import { navForViewer, utilityLinks, type NavItem } from "@/data/navigation";
 import { site } from "@/data/site";
 
 function navItemActive(pathname: string, search: string, item: NavItem): boolean {
@@ -32,6 +32,7 @@ export function MainNav() {
   const { session, logout, isAdmin } = useAuth();
 
   const homeHref = "/";
+  const visibleNav = navForViewer(isAdmin);
 
   const visibleUtilityLinks = utilityLinks.filter((link) => {
     if (link.href === "/account" || link.href === "/saved-properties") {
@@ -182,7 +183,7 @@ export function MainNav() {
             >
               Home
             </Link>
-            {mainNav.map((item) => {
+            {visibleNav.map((item) => {
               const sectionOpen = menuSection === item.label;
               return (
                 <div

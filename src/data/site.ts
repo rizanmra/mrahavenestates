@@ -32,9 +32,25 @@ export const navLinks = [
 
 export const services = [
   {
+    title: "Conveyancing",
+    description:
+      "Expert legal support from offer to completion. Trusted conveyancers nationwide across the UK.",
+    href: "/conveyancing",
+    cta: "Explore conveyancing",
+    image: siteImages.conveyancing,
+  },
+  {
+    title: "Mortgages",
+    description:
+      "Whole-of-market mortgage advice for first-time buyers, remortgages, and buy-to-let — anywhere in the UK.",
+    href: "/mortgages",
+    cta: "Explore mortgages",
+    image: siteImages.mortgages,
+  },
+  {
     title: "Sales",
     description:
-      "Expert guidance from valuation to completion. We market your home with premium photography and targeted reach.",
+      "Expert guidance from valuation to completion. We market your home with premium photography and targeted reach nationwide.",
     href: "/sales",
     cta: "Explore sales",
     image: siteImages.sales,
@@ -42,7 +58,7 @@ export const services = [
   {
     title: "Lettings",
     description:
-      "Landlord and tenant services across Bradford and West Yorkshire. Managed lettings with full compliance.",
+      "Landlord and tenant services nationwide across the UK. Managed lettings with full compliance.",
     href: "/lettings",
     cta: "Explore lettings",
     image: siteImages.lettings,
@@ -50,17 +66,20 @@ export const services = [
   {
     title: "Removal Services",
     description:
-      "Licensed removals with professional packing. From studio flats to full family relocations.",
+      "Licensed removals with professional packing. From studio flats to full family relocations — nationwide.",
     href: "/removal-services",
     cta: "Explore removals",
     image: siteImages.removals,
   },
 ];
 
+export const whyChooseUsIntro =
+  "We are a trusted estate agent serving clients nationwide across the UK. With a dedicated team of property professionals, we offer a complete moving solution — from sales and lettings to removals and valuations.";
+
 export const whyChooseUs = [
   "We are passionate about helping people move",
   "A dedicated team of property professionals",
-  "Proud to support our local communities",
+  "Proud to support communities across the UK",
   "Complete moving solution from start to finish",
   "Sales, lettings, removals and valuations under one roof",
 ];
@@ -100,7 +119,7 @@ export const testimonials = [
   },
   {
     quote:
-      "The removal team was punctual, careful with our furniture, and finished ahead of schedule. I would recommend them to anyone moving in the Bradford area.",
+      "The removal team was punctual, careful with our furniture, and finished ahead of schedule. I would recommend them to anyone moving anywhere in the UK.",
     name: "Sarah Ahmed",
     role: "Removal Client",
   },

@@ -158,8 +158,11 @@ export function AdminPortal() {
   }, [isAdmin, ready, router, session]);
 
   useEffect(() => {
+    const requested = searchParams.get("tab");
     const next =
-      searchParams.get("tab") === "listings" ? "listings" : "enquiries";
+      requested === "listings" || requested === "password"
+        ? requested
+        : "enquiries";
     setTab(next);
   }, [searchParams]);
 
@@ -226,6 +229,7 @@ export function AdminPortal() {
       const res = await fetch("/api/admin/property-enquiries", {
         method: "PATCH",
         headers: await authHeaders(),
+        credentials: "include",
         body: JSON.stringify({ id, reply }),
       });
       const data = (await res.json()) as {
@@ -264,6 +268,7 @@ export function AdminPortal() {
         {
           method: "DELETE",
           headers: await authHeaders(),
+          credentials: "include",
         },
       );
       const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -363,6 +368,7 @@ export function AdminPortal() {
         {
           method: "DELETE",
           headers: await authHeaders(),
+          credentials: "include",
         },
       );
       const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -585,7 +591,7 @@ export function AdminPortal() {
             <div className="mt-12">
               {!loading && sortedEnquiries.length === 0 ? (
                 <p className="text-[color:var(--muted)]">
-                  No property enquiries yet.
+                  No enquiries yet.
                 </p>
               ) : null}
               {sortedEnquiries.length > 0 ? (
@@ -595,7 +601,17 @@ export function AdminPortal() {
                 </p>
               ) : null}
               <ul className="space-y-6">
-                {pagedEnquiries.map((enquiry) => (
+                {pagedEnquiries.map((enquiry) => {
+                  const listingSlug = enquiry.property.slug || "";
+                  const isContactRow =
+                    enquiry.property.type === "contact" ||
+                    listingSlug.startsWith("contact-");
+                  const kind = isContactRow
+                    ? "Contact"
+                    : enquiry.property.type === "sale"
+                      ? "Sale"
+                      : "Rent";
+                  return (
                   <li
                     key={enquiry.id}
                     className="border border-[color:var(--line)] bg-[color:var(--navy-light)] p-6"
@@ -608,7 +624,7 @@ export function AdminPortal() {
                             : enquiry.read
                               ? "Read"
                               : "New"}{" "}
-                          · Rent
+                          · {kind}
                         </p>
                         <h2 className="font-display mt-2 text-2xl text-white">
                           {enquiry.property.title}
@@ -647,50 +663,55 @@ export function AdminPortal() {
                       <div className="mt-6 border border-[color:var(--line)] p-4">
                         <p className="text-xs uppercase tracking-widest text-[color:var(--gold)]">
                           Staff reply
+                          {enquiry.status === "answered" ? " · shown on client account" : ""}
                         </p>
                         <p className="mt-2 whitespace-pre-wrap text-white">
                           {enquiry.reply}
                         </p>
                       </div>
-                    ) : (
-                      <div className="mt-6 space-y-3">
-                        <label className="block">
-                          <span className="text-sm text-white">
-                            Reply by email
-                          </span>
-                          <textarea
-                            rows={4}
-                            value={replyDrafts[enquiry.id] || ""}
-                            onChange={(event) =>
-                              setReplyDrafts((current) => ({
-                                ...current,
-                                [enquiry.id]: event.target.value,
-                              }))
-                            }
-                            className="mt-2 w-full border border-[color:var(--line)] bg-transparent p-3 text-white outline-none focus:border-[color:var(--gold)]"
-                            placeholder="Write a reply to send to the client…"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          disabled={replyBusy === enquiry.id}
-                          onClick={() => sendReply(enquiry.id)}
-                          className="btn-gold px-6 py-3 text-sm uppercase disabled:opacity-70"
-                        >
-                          {replyBusy === enquiry.id
-                            ? "Sending…"
+                    ) : null}
+
+                    <div className="mt-6 space-y-3">
+                      <label className="block">
+                        <span className="text-sm text-white">
+                          {enquiry.reply ? "Send a further reply" : "Reply to client"}
+                        </span>
+                        <textarea
+                          rows={4}
+                          value={replyDrafts[enquiry.id] || ""}
+                          onChange={(event) =>
+                            setReplyDrafts((current) => ({
+                              ...current,
+                              [enquiry.id]: event.target.value,
+                            }))
+                          }
+                          className="mt-2 w-full border border-[color:var(--line)] bg-transparent p-3 text-white outline-none focus:border-[color:var(--gold)]"
+                          placeholder="Write a reply. It is saved on the client account even if email is unavailable."
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={replyBusy === enquiry.id}
+                        onClick={() => sendReply(enquiry.id)}
+                        className="btn-gold px-6 py-3 text-sm uppercase disabled:opacity-70"
+                      >
+                        {replyBusy === enquiry.id
+                          ? "Sending…"
+                          : enquiry.reply
+                            ? "Update reply"
                             : "Send reply"}
-                        </button>
-                      </div>
-                    )}
+                      </button>
+                    </div>
 
                     <div className="mt-6 flex flex-wrap gap-4">
-                      <Link
-                        href={`/properties/${enquiry.property.slug}`}
-                        className="text-sm text-[color:var(--gold)] hover:text-white"
-                      >
-                        Open listing →
-                      </Link>
+                      {isContactRow ? null : (
+                        <Link
+                          href={`/properties/${listingSlug}`}
+                          className="text-sm text-[color:var(--gold)] hover:text-white"
+                        >
+                          Open listing →
+                        </Link>
+                      )}
                       <button
                         type="button"
                         onClick={() => markRead(enquiry.id, !enquiry.read)}
@@ -712,7 +733,8 @@ export function AdminPortal() {
                       </button>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
 
               {sortedEnquiries.length > ENQUIRIES_PER_PAGE ? (

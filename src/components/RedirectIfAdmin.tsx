@@ -27,14 +27,6 @@ export function RedirectIfAdmin({
     }
   }, [href, isAdmin, ready, router, soft]);
 
-  if (!ready) {
-    return (
-      <div className="page-offset px-6 py-16 text-[color:var(--muted)] lg:px-10">
-        Loading…
-      </div>
-    );
-  }
-
   if (isAdmin) {
     return (
       <div className="page-offset mx-auto max-w-xl px-6 py-20 text-center lg:px-10">

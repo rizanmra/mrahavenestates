@@ -1,6 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { PropertyCard } from "@/components/PropertyCard";
+import { PropertiesEmptyCopy } from "@/components/PropertiesEmptyCopy";
 import {
   getPropertiesByType,
   type PropertyType,
@@ -60,23 +60,17 @@ export default async function PropertiesPage({
             {locationLabel
               ? `Results for “${locationLabel}”`
               : forSale
-                ? "Homes for sale across Bradford and West Yorkshire"
-                : "Homes available to rent across Bradford and West Yorkshire"}
+                ? "Homes for sale nationwide across the UK"
+                : "Homes available to rent nationwide across the UK"}
           </p>
 
           {results.length === 0 ? (
-            <p className="mt-12 text-lg text-[color:var(--muted)]">
-              {locationLabel
-                ? `There's no property available at “${locationLabel}”.`
-                : "There's no property available right now."}{" "}
-              <Link
-                href={forSale ? "/contact?reason=sales" : "/contact?reason=lettings"}
-                className="text-[color:var(--gold)]"
-              >
-                Contact us
-              </Link>{" "}
-              and we will help you find the right home.
-            </p>
+            <PropertiesEmptyCopy
+              locationLabel={locationLabel}
+              contactHref={
+                forSale ? "/contact?reason=sales" : "/contact?reason=lettings"
+              }
+            />
           ) : (
             <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {results.map((property) => (

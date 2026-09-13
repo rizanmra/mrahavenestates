@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { newsArticles } from "@/data/news";
 import { siteImages } from "@/data/hero-images";
 
@@ -58,12 +58,12 @@ export default function NewsPage() {
                 <p className="mt-4 text-sm leading-relaxed text-[color:var(--muted)]">
                   {article.excerpt}
                 </p>
-                <Link
+                <PublicInboxLink
                   href="/contact?reason=general"
                   className="mt-6 inline-block text-sm text-[color:var(--gold)] hover:underline"
                 >
                   Contact us about this topic
-                </Link>
+                </PublicInboxLink>
               </div>
             </article>
           ))}

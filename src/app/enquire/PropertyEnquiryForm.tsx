@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import type { Property } from "@/data/properties";
+import { seedProperties, type Property } from "@/data/properties";
 import { firebaseCreatePropertyEnquiry } from "@/lib/firebase-auth";
 import {
   formatPhoneForStorage,
@@ -34,8 +34,10 @@ function propertyPayload(property: Property) {
 export default function PropertyEnquiryForm() {
   const searchParams = useSearchParams();
   const initialSlug = searchParams.get("property") ?? "";
-  const [listings, setListings] = useState<Property[]>([]);
-  const [selectedSlug, setSelectedSlug] = useState(initialSlug);
+  const [listings, setListings] = useState<Property[]>(seedProperties);
+  const [selectedSlug, setSelectedSlug] = useState(() =>
+    seedProperties.some((item) => item.slug === initialSlug) ? initialSlug : "",
+  );
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,19 +45,22 @@ export default function PropertyEnquiryForm() {
   const loggedIn = Boolean(session);
 
   useEffect(() => {
-    void fetch("/api/properties?type=rent")
+    void fetch("/api/properties")
       .then((res) => res.json())
       .then((data: { properties?: Property[] }) => {
         const list = Array.isArray(data.properties) ? data.properties : [];
-        setListings(list);
+        const next = list.length > 0 ? list : seedProperties;
+        setListings(next);
         const slug = searchParams.get("property") ?? "";
-        if (list.some((item) => item.slug === slug)) {
+        if (next.some((item) => item.slug === slug)) {
           setSelectedSlug(slug);
-        } else if (!list.some((item) => item.slug === selectedSlug)) {
+        } else if (!next.some((item) => item.slug === selectedSlug)) {
           setSelectedSlug("");
         }
       })
-      .catch(() => setListings([]));
+      .catch(() => {
+        setListings((current) => (current.length > 0 ? current : seedProperties));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -165,9 +170,9 @@ export default function PropertyEnquiryForm() {
               Enquire
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-[color:var(--muted)]">
-              Ask about a rental listing — viewings, availability or further
-              details. Your message goes to our staff inbox with the listing
-              attached.
+              Ask about a home for sale or to rent — viewings, availability or
+              further details. Your message goes to our staff inbox with the
+              listing attached.
             </p>
             <p className="mt-6 text-sm text-[color:var(--muted)]">
               For general questions unrelated to a listing, use{" "}

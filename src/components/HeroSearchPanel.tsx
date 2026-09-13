@@ -57,7 +57,7 @@ export function HeroSearchPanel() {
     <div className="mx-auto w-full max-w-3xl">
       {mode === "value" ? (
         <p className="home-value-prompt mb-3 text-center text-sm tracking-wide text-[color:var(--gold)] md:text-base">
-          Free market estimate — Bradford &amp; West Yorkshire
+          Free market estimate — nationwide across the UK
         </p>
       ) : null}
 
@@ -123,7 +123,7 @@ export function HeroSearchPanel() {
           </>
         ) : (
           <>
-            Find homes to rent across Bradford and West Yorkshire ·{" "}
+            Find homes to rent nationwide across the UK ·{" "}
             <button
               type="button"
               onClick={() => {

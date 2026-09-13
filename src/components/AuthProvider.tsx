@@ -25,6 +25,8 @@ import {
   firebaseWatchEnquiries,
   watchFirebaseSession,
 } from "@/lib/firebase-auth";
+import { sessionIsAdmin } from "@/lib/admin";
+import { mergePortalEnquiryLists } from "@/lib/enquiry-bridge";
 import { filterAvailablePropertySlugs } from "@/data/properties";
 import {
   addEnquiry,
@@ -48,6 +50,7 @@ async function fetchStaffSession(): Promise<PortalSession | null> {
     const res = await fetch("/api/admin/session", {
       credentials: "include",
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
     const data = (await res.json()) as {
       ok?: boolean;
@@ -118,6 +121,25 @@ async function fetchEnquiryStatusUpdates(
     };
     if (!res.ok || !data.ok || !Array.isArray(data.updates)) return [];
     return data.updates;
+  } catch {
+    return [];
+  }
+}
+
+async function fetchInboxMirror(): Promise<PortalEnquiry[]> {
+  const token = await firebaseGetIdToken();
+  if (!token) return [];
+  try {
+    const res = await fetch("/api/portal/my-enquiries", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      enquiries?: PortalEnquiry[];
+    };
+    if (!res.ok || !data.ok || !Array.isArray(data.enquiries)) return [];
+    return data.enquiries;
   } catch {
     return [];
   }
@@ -229,17 +251,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             enriched.email,
             rawEnquiries,
           );
-          const updates = await fetchEnquiryStatusUpdates(
-            enriched.email,
-            enquiryList,
-          );
+          const [updates, inboxRows] = await Promise.all([
+            fetchEnquiryStatusUpdates(enriched.email, enquiryList),
+            fetchInboxMirror(),
+          ]);
           const liveSet = new Set(live);
           setSavedSlugs(
             live.length
               ? saved.filter((slug) => liveSet.has(slug))
               : filterAvailablePropertySlugs(saved),
           );
-          setEnquiries(mergeEnquiryUpdates(enquiryList, updates));
+          setEnquiries(
+            mergePortalEnquiryLists(
+              mergeEnquiryUpdates(enquiryList, updates),
+              filterOwnEnquiries(enriched.userId, enriched.email, inboxRows),
+            ),
+          );
         } catch {
           setSavedSlugs([]);
           setEnquiries([]);
@@ -269,12 +296,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         next.email,
         getEnquiries(next.userId, next.email),
       );
-      const updates = await fetchEnquiryStatusUpdates(next.email, own);
+      const [updates, inboxRows] = await Promise.all([
+        fetchEnquiryStatusUpdates(next.email, own),
+        fetchInboxMirror(),
+      ]);
       setEnquiries(
-        filterOwnEnquiries(
-          next.userId,
-          next.email,
-          applyEnquiryStatusUpdates(next.userId, updates),
+        mergePortalEnquiryLists(
+          filterOwnEnquiries(
+            next.userId,
+            next.email,
+            applyEnquiryStatusUpdates(next.userId, updates),
+          ),
+          filterOwnEnquiries(next.userId, next.email, inboxRows),
         ),
       );
     },
@@ -285,6 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (usingFirebase) {
       const unsub = watchFirebaseSession((next) => {
         void (async () => {
+          setReady(true);
           try {
             if (next) {
               hadFirebaseUser.current = true;
@@ -326,9 +360,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const applyList = async (list: PortalEnquiry[]) => {
       const own = filterOwnEnquiries(userId, email, list);
-      const updates = await fetchEnquiryStatusUpdates(email, own);
+      const [updates, inboxRows] = await Promise.all([
+        fetchEnquiryStatusUpdates(email, own),
+        fetchInboxMirror(),
+      ]);
       if (cancelled) return;
-      setEnquiries(mergeEnquiryUpdates(own, updates));
+      setEnquiries(
+        mergePortalEnquiryLists(
+          mergeEnquiryUpdates(own, updates),
+          filterOwnEnquiries(userId, email, inboxRows),
+        ),
+      );
     };
 
     const refresh = async () => {
@@ -366,26 +408,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       ready,
-      isAdmin: Boolean(session?.isAdmin),
+      isAdmin: sessionIsAdmin(session),
       usingFirebase,
       login: async (email, password) => {
         const epoch = ++authEpoch.current;
         const next = await firebaseLogin(email.trim().toLowerCase(), password);
-        if (next.isAdmin) await attachStaffCookieFromToken();
-        hadFirebaseUser.current = firebaseCurrentUserId() === next.userId;
-        await loadUserData(next, epoch);
+        const signedIn = { ...next, isAdmin: sessionIsAdmin(next) };
+        if (signedIn.isAdmin) await attachStaffCookieFromToken();
+        hadFirebaseUser.current = firebaseCurrentUserId() === signedIn.userId;
+        await loadUserData(signedIn, epoch);
         setReady(true);
-        return next;
+        return signedIn;
       },
       register: async (input) => {
         const epoch = ++authEpoch.current;
         const next = await firebaseRegister(input);
-        if (next.isAdmin) await attachStaffCookieFromToken();
-        hadFirebaseUser.current = firebaseCurrentUserId() === next.userId;
-        await loadUserData(next, epoch);
+        const created = { ...next, isAdmin: sessionIsAdmin(next) };
+        if (created.isAdmin) await attachStaffCookieFromToken();
+        hadFirebaseUser.current = firebaseCurrentUserId() === created.userId;
+        await loadUserData(created, epoch);
         markNewSignupWelcome();
         setReady(true);
-        return next;
+        return created;
       },
       logout: () => {
         authEpoch.current += 1;

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { isReservedStaffEmail } from "@/lib/admin";
 import {
+  getAssignedAdmin,
   newPropertyEnquiryId,
   savePropertyEnquiry,
 } from "@/lib/admin-server";
-import { getAssignedAdmin } from "@/lib/admin-server";
 import { getContactReason, isContactReasonId } from "@/data/contact-reasons";
 import {
   formatPhoneForStorage,
@@ -320,7 +321,10 @@ export async function POST(request: Request) {
     const cleanName = name.trim().replace(/\s+/g, " ");
     const cleanEmail = email.trim().toLowerCase();
     const assignedAdmin = await getAssignedAdmin();
-    if (assignedAdmin && assignedAdmin.email === cleanEmail) {
+    if (
+      isReservedStaffEmail(cleanEmail) ||
+      (assignedAdmin && assignedAdmin.email === cleanEmail)
+    ) {
       return NextResponse.json(
         {
           ok: false,

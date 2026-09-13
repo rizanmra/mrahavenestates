@@ -12,7 +12,7 @@ import {
   onSnapshot,
   setDoc,
 } from "firebase/firestore";
-import { setCachedAdmin } from "@/lib/admin";
+import { isReservedStaffEmail, setCachedAdmin } from "@/lib/admin";
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase";
 import { formatPhoneForStorage } from "@/lib/form-validation";
 import type { PortalEnquiry, PortalSession } from "@/lib/portal";
@@ -116,8 +116,9 @@ async function fetchProfile(
 }
 
 async function resolveAdminRole(session: PortalSession): Promise<PortalSession> {
+  const reserved = isReservedStaffEmail(session.email);
   const token = await firebaseGetIdToken();
-  if (!token) return { ...session, isAdmin: false };
+  if (!token) return { ...session, isAdmin: reserved };
   try {
     const res = await fetch("/api/admin/claim", {
       method: "POST",
@@ -129,9 +130,12 @@ async function resolveAdminRole(session: PortalSession): Promise<PortalSession> 
       admin?: { userId: string; email: string } | null;
     };
     if (data.admin) setCachedAdmin(data.admin);
-    return { ...session, isAdmin: Boolean(data.ok && data.isAdmin) };
+    return {
+      ...session,
+      isAdmin: reserved || Boolean(data.ok && data.isAdmin),
+    };
   } catch {
-    return { ...session, isAdmin: false };
+    return { ...session, isAdmin: reserved };
   }
 }
 
@@ -191,7 +195,7 @@ export function watchFirebaseSession(
           email: user.email ?? "",
           name: user.displayName?.trim() || "Client",
           phone: undefined,
-          isAdmin: false,
+          isAdmin: isReservedStaffEmail(user.email),
         });
       });
   });

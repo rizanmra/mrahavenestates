@@ -116,7 +116,7 @@ export function AccountPortal() {
               {site.phone}
             </a>
             <p className="mt-2 text-sm text-[color:var(--muted)]">
-              Bradford office · {site.address.postcode}
+              Head office · {site.address.postcode}
             </p>
             <div className="mt-4 space-y-2">
               <Link

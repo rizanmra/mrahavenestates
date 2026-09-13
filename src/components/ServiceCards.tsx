@@ -5,7 +5,7 @@ import { services } from "@/data/site";
 export function ServiceCards() {
   return (
     <section className="px-6 py-24 lg:px-10">
-      <div className="mx-auto grid max-w-6xl items-stretch gap-8 md:grid-cols-3">
+      <div className="mx-auto grid max-w-7xl items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {services.map((service) => (
           <div
             key={service.title}
@@ -18,13 +18,15 @@ export function ServiceCards() {
                   alt={service.title}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, 33vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 20vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] to-transparent" />
               </div>
             ) : null}
-            <div className="flex flex-1 flex-col p-8 text-center">
-              <h3 className="font-display text-4xl text-white">{service.title}</h3>
+            <div className="flex flex-1 flex-col p-6 text-center xl:p-5">
+              <h3 className="font-display text-3xl text-white xl:text-[1.7rem]">
+                {service.title}
+              </h3>
               <div className="gold-line my-6" />
               <p className="mt-4 flex-1 text-sm leading-relaxed text-[color:var(--muted)]">
                 {service.description}

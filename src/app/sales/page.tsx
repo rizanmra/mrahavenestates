@@ -6,7 +6,7 @@ import { siteImages } from "@/data/hero-images";
 export const metadata: Metadata = {
   title: "Sales",
   description:
-    "Sell your property with MRA Haven Estates. Expert marketing, valuations and sales across Bradford.",
+    "Sell your property with MRA Haven Estates. Expert marketing, valuations and sales nationwide across the UK.",
 };
 
 export default function SalesPage() {
@@ -34,7 +34,7 @@ export default function SalesPage() {
           <p className="text-lg leading-relaxed text-[color:var(--muted)]">
             From first valuation to completion, our sales team guides you
             through every step. Premium photography, targeted marketing, and
-            local market expertise across Bradford and West Yorkshire.
+            nationwide market expertise across the UK.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link

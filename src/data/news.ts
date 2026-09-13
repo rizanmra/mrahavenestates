@@ -10,11 +10,11 @@ export type NewsArticle = {
 
 export const newsArticles: NewsArticle[] = [
   {
-    slug: "bradford-market-update-2026",
-    title: "Bradford Property Market Update — Spring 2026",
+    slug: "uk-market-update-2026",
+    title: "UK Property Market Update — Spring 2026",
     date: "12 March 2026",
     excerpt:
-      "Average asking prices in Bradford rose 3.2% year-on-year. Strong demand for family homes in BD8 and BD18 continues to outpace supply.",
+      "Average asking prices across the UK rose 3.2% year-on-year. Strong demand for family homes continues to outpace supply in many regions.",
     image: siteImages.news,
   },
   {

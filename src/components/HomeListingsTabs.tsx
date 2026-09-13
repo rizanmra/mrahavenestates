@@ -3,16 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { siteImages } from "@/data/hero-images";
 import type { Property } from "@/data/properties";
 
-type Tab = "sale" | "rent" | "conveyancing" | "mortgages";
+type Tab = "conveyancing" | "mortgages" | "sale" | "rent" | "removals";
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: "sale", label: "Properties for sale" },
-  { id: "rent", label: "Properties for rent" },
   { id: "conveyancing", label: "Conveyancing" },
-  { id: "mortgages", label: "Mortgages" },
+  { id: "mortgages", label: "Mortgage" },
+  { id: "sale", label: "Sales" },
+  { id: "rent", label: "Lettings" },
+  { id: "removals", label: "Removals" },
 ];
 
 export function HomeListingsTabs({
@@ -22,7 +25,7 @@ export function HomeListingsTabs({
   saleProperties: Property[];
   rentProperties: Property[];
 }) {
-  const [tab, setTab] = useState<Tab>("sale");
+  const [tab, setTab] = useState<Tab>("conveyancing");
 
   return (
     <section className="border-t border-[color:var(--line)] px-6 py-24 lg:px-10">
@@ -56,6 +59,32 @@ export function HomeListingsTabs({
           })}
         </div>
 
+        {tab === "conveyancing" ? (
+          <ServiceQuotePanel
+            title="Conveyancing"
+            copy="Trusted solicitors nationwide across the UK for a smooth sale or purchase — from instruction through to completion."
+            image={siteImages.conveyancing}
+            imageAlt="Conveyancing and property legal services"
+            quoteHref="/contact?reason=conveyancing"
+            quoteLabel="Get a quote"
+            moreHref="/conveyancing"
+            moreLabel="Find out more"
+          />
+        ) : null}
+
+        {tab === "mortgages" ? (
+          <ServiceQuotePanel
+            title="Mortgage"
+            copy="Whole-of-market advice nationwide across the UK for first-time buyers, movers, remortgages and buy-to-let landlords."
+            image={siteImages.mortgages}
+            imageAlt="Mortgage advice"
+            quoteHref="/contact?reason=mortgage"
+            quoteLabel="Get a quote"
+            moreHref="/mortgages"
+            moreLabel="Find out more"
+          />
+        ) : null}
+
         {tab === "sale" ? (
           <PropertyGrid
             properties={saleProperties}
@@ -74,28 +103,15 @@ export function HomeListingsTabs({
           />
         ) : null}
 
-        {tab === "conveyancing" ? (
+        {tab === "removals" ? (
           <ServiceQuotePanel
-            title="Conveyancing"
-            copy="Trusted solicitors for a smooth sale or purchase — from instruction through to completion."
-            image={siteImages.conveyancing}
-            imageAlt="Conveyancing and property legal services"
-            quoteHref="/contact?reason=conveyancing"
+            title="Removals"
+            copy="Licensed, insured relocation nationwide across the UK — packing, moving, and a smooth handover."
+            image={siteImages.removals}
+            imageAlt="Removal and relocation services"
+            quoteHref="/contact?reason=removals"
             quoteLabel="Get a quote"
-            moreHref="/conveyancing"
-            moreLabel="Find out more"
-          />
-        ) : null}
-
-        {tab === "mortgages" ? (
-          <ServiceQuotePanel
-            title="Mortgages"
-            copy="Whole-of-market advice for first-time buyers, movers, remortgages and buy-to-let landlords."
-            image={siteImages.mortgages}
-            imageAlt="Mortgage advice"
-            quoteHref="/contact?reason=mortgage"
-            quoteLabel="Get a quote"
-            moreHref="/mortgages"
+            moreHref="/removal-services"
             moreLabel="Find out more"
           />
         ) : null}
@@ -115,14 +131,21 @@ function PropertyGrid({
   viewAllHref: string;
   viewAllLabel: string;
 }) {
+  const { isAdmin } = useAuth();
+
   if (properties.length === 0) {
     return (
       <p className="mt-12 text-lg text-[color:var(--muted)]">
-        {empty}{" "}
-        <Link href="/contact" className="text-[color:var(--gold)]">
-          Contact us
-        </Link>
-        .
+        {empty}
+        {isAdmin ? null : (
+          <>
+            {" "}
+            <PublicInboxLink href="/contact" className="text-[color:var(--gold)]">
+              Contact us
+            </PublicInboxLink>
+            .
+          </>
+        )}
       </p>
     );
   }
@@ -211,12 +234,12 @@ function ServiceQuotePanel({
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[color:var(--navy)]/90 via-[color:var(--navy)]/55 to-[color:var(--navy)]/25" />
       <div className="relative z-10 flex min-h-[380px] flex-col justify-between p-6 md:min-h-[440px] md:p-10">
         <div className="flex justify-end">
-          <Link
+          <PublicInboxLink
             href={quoteHref}
             className="btn-gold px-6 py-3 text-xs font-medium tracking-wide uppercase"
           >
             {quoteLabel}
-          </Link>
+          </PublicInboxLink>
         </div>
         <div>
           <h3 className="font-display text-4xl text-white md:text-5xl">{title}</h3>

@@ -10,8 +10,7 @@ export type ClientEnquiryStatusUpdate = {
 };
 
 const FILE_PATH = path.join(
-  process.cwd(),
-  ".data",
+  process.env.VERCEL ? "/tmp" : path.join(process.cwd(), ".data"),
   "client-enquiry-updates.json",
 );
 

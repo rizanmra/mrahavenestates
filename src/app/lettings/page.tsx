@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { siteImages } from "@/data/hero-images";
 
 export const metadata: Metadata = {
   title: "Lettings",
   description:
-    "Landlord and tenant lettings services across Bradford. Managed lettings with full compliance.",
+    "Landlord and tenant lettings services nationwide across the UK. Managed lettings with full compliance.",
 };
 
 export default function LettingsPage() {
@@ -37,12 +38,12 @@ export default function LettingsPage() {
             support with compliance, referencing, and property management.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link
+            <PublicInboxLink
               href="/contact?reason=lettings"
               className="btn-gold px-8 py-3 text-sm font-medium uppercase"
             >
               Book now
-            </Link>
+            </PublicInboxLink>
             <Link
               href="/properties?type=rent"
               className="btn-outline-gold px-8 py-3 text-sm uppercase"

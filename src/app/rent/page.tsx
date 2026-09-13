@@ -12,7 +12,7 @@ export default function RentPage() {
     <>
       <PageImageHero
         title="Find a Property to Rent"
-        subtitle="Quality rental homes across Bradford and West Yorkshire."
+        subtitle="Quality rental homes nationwide across the UK."
         image={siteImages.rent}
       />
       <InfoBody

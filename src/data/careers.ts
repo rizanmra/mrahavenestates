@@ -11,7 +11,7 @@ export const jobListings: JobListing[] = [
     location: "Bradford, BD8",
     type: "Full-time",
     description:
-      "Join our sales team helping buyers and sellers across West Yorkshire. Experience in estate agency preferred; full training provided for the right candidate.",
+      "Join our sales team helping buyers and sellers nationwide across the UK. Experience in estate agency preferred; full training provided for the right candidate.",
   },
   {
     title: "Lettings Manager",
@@ -29,9 +29,9 @@ export const jobListings: JobListing[] = [
   },
   {
     title: "Removal Team Driver",
-    location: "West Yorkshire",
+    location: "Nationwide / UK",
     type: "Full-time",
     description:
-      "Experienced removal driver with clean licence. Competitive pay, modern fleet, and local routes.",
+      "Experienced removal driver with clean licence. Competitive pay, modern fleet, and nationwide routes.",
   },
 ];

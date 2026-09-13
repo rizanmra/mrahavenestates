@@ -1,13 +1,13 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
+import { PublicInboxLink } from "@/components/PublicInboxLink";
 import { RemovalSection } from "@/components/RemovalSection";
 import { siteImages } from "@/data/hero-images";
 
 export const metadata: Metadata = {
   title: "Removal Services",
   description:
-    "Licensed removal and packing services across Bradford. Fully certified team.",
+    "Licensed removal and packing services nationwide across the UK. Fully certified team.",
 };
 
 export default function RemovalServicesPage() {
@@ -33,12 +33,12 @@ export default function RemovalServicesPage() {
       <RemovalSection />
 
       <section className="px-6 pb-24 text-center lg:px-10">
-        <Link
+        <PublicInboxLink
           href="/contact?reason=removals"
           className="btn-gold inline-block px-10 py-4 text-sm font-medium uppercase"
         >
           Get a quote
-        </Link>
+        </PublicInboxLink>
       </section>
     </div>
   );

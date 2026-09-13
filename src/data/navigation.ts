@@ -228,3 +228,55 @@ export const utilityLinks = [
   { label: "Staff portal", href: "/admin" },
   { label: "Login", href: "/login#login-form" },
 ];
+
+export const staffNav: NavItem = {
+  label: "Staff",
+  href: "/admin",
+  columns: [
+    {
+      title: "Staff portal",
+      links: [
+        { label: "Enquiries inbox", href: "/admin?tab=enquiries" },
+        { label: "Manage listings", href: "/admin?tab=listings" },
+        { label: "Change password", href: "/admin?tab=password" },
+      ],
+    },
+  ],
+};
+
+/** Contact / enquire forms go to the staff inbox — hide them from admins. */
+export function isClientInboxHref(href: string): boolean {
+  const path = href.split("?")[0].split("#")[0];
+  return (
+    path === "/contact" ||
+    path === "/enquire" ||
+    path.startsWith("/contact/") ||
+    path.startsWith("/enquire/")
+  );
+}
+
+function filterInboxLinks(links: NavLink[]): NavLink[] {
+  return links.filter((link) => !isClientInboxHref(link.href));
+}
+
+export function navForViewer(isAdmin: boolean): NavItem[] {
+  if (!isAdmin) return mainNav;
+
+  const filtered = mainNav
+    .filter((item) => !isClientInboxHref(item.href))
+    .map((item) => {
+      const highlight =
+        item.highlight && !isClientInboxHref(item.highlight.href)
+          ? item.highlight
+          : undefined;
+      const columns = item.columns
+        ?.map((column) => ({
+          ...column,
+          links: filterInboxLinks(column.links),
+        }))
+        .filter((column) => column.links.length > 0);
+      return { ...item, highlight, columns };
+    });
+
+  return [...filtered, staffNav];
+}

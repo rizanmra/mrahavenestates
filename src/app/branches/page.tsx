@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { InfoBody, PageHero } from "@/components/PageTemplate";
 import { site } from "@/data/site";
 
@@ -45,12 +44,7 @@ export default function BranchesPage() {
         </p>
         <p>
           Our team can help with lettings, valuations, landlord services,
-          conveyancing introductions, mortgages and removals. Prefer to write
-          online? Use{" "}
-          <Link href="/contact?reason=general" className="text-[color:var(--gold)]">
-            Contact us
-          </Link>
-          .
+          conveyancing introductions, mortgages and removals.
         </p>
       </InfoBody>
     </>
