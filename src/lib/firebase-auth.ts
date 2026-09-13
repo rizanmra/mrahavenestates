@@ -143,6 +143,10 @@ export function firebaseAuthEnabled(): boolean {
   return isFirebaseConfigured();
 }
 
+export function firebaseCurrentUserId(): string | null {
+  return getFirebaseAuth()?.currentUser?.uid ?? null;
+}
+
 export function watchFirebaseSession(
   onChange: (session: PortalSession | null) => void,
 ): () => void {
@@ -157,17 +161,18 @@ export function watchFirebaseSession(
       onChange(null);
       return;
     }
+    // Apply Auth immediately so login is not blocked by Firestore.
+    onChange({
+      userId: user.uid,
+      email: user.email ?? "",
+      name: user.displayName?.trim() || "Client",
+      phone: undefined,
+    });
     void toSession(user)
-      .then(onChange)
-      .catch(() => {
-        // Still prefer Firestore on retry via enrich; Auth has no phone field.
-        onChange({
-          userId: user.uid,
-          email: user.email ?? "",
-          name: user.displayName?.trim() || "Client",
-          phone: undefined,
-        });
-      });
+      .then((full) => {
+        if (full.userId === user.uid) onChange(full);
+      })
+      .catch(() => undefined);
   });
 }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminEmail } from "@/lib/admin-server";
+import { getAdminEmail, lookupFirebaseEmail } from "@/lib/admin-server";
 import {
   createStaffSessionToken,
   readStaffSessionCookie,
@@ -27,21 +27,38 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { email?: string; password?: string };
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
+  const body = (await request.json()) as {
+    email?: string;
+    password?: string;
+    idToken?: string;
+  };
 
-  if (email !== getAdminEmail() || !staffPasswordMatches(password)) {
-    return NextResponse.json(
-      { ok: false, error: "Incorrect email or password." },
-      { status: 401 },
-    );
+  let email = "";
+  const idToken = String(body.idToken ?? "").trim();
+  if (idToken) {
+    const fromToken = await lookupFirebaseEmail(idToken);
+    if (!fromToken || fromToken !== getAdminEmail()) {
+      return NextResponse.json(
+        { ok: false, error: "Incorrect email or password." },
+        { status: 401 },
+      );
+    }
+    email = fromToken;
+  } else {
+    email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    if (email !== getAdminEmail() || !staffPasswordMatches(password)) {
+      return NextResponse.json(
+        { ok: false, error: "Incorrect email or password." },
+        { status: 401 },
+      );
+    }
   }
 
   const token = createStaffSessionToken(email);
   if (!token) {
     return NextResponse.json(
-      { ok: false, error: "Staff password is not configured on the server." },
+      { ok: false, error: "Staff session could not be created." },
       { status: 503 },
     );
   }

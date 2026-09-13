@@ -110,9 +110,9 @@ export function LoginPortal() {
     setError("");
     setBusy(true);
     try {
-      await login(String(form.get("email") ?? ""), String(form.get("password") ?? ""));
       const email = String(form.get("email") ?? "").trim().toLowerCase();
-      router.push(isAdminEmail(email) ? "/admin" : nextPath);
+      await login(email, String(form.get("password") ?? ""));
+      router.replace(isAdminEmail(email) ? "/admin" : nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in.");
     } finally {
@@ -153,7 +153,7 @@ export function LoginPortal() {
         phone: formatPhoneForStorage(phone),
         password,
       });
-      router.push(nextPath);
+      router.replace(isAdmin ? "/admin" : nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account.");
     } finally {

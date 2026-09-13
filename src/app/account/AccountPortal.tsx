@@ -17,12 +17,17 @@ export function AccountPortal() {
   const [isNewSignup] = useState(() => consumeNewSignupWelcome());
 
   useEffect(() => {
-    if (ready && !session) {
-      router.replace("/login?next=/account#login-form");
+    if (!ready) return;
+    if (!session) {
+      const timer = window.setTimeout(() => {
+        router.replace("/login?next=/account#login-form");
+      }, 500);
+      return () => window.clearTimeout(timer);
     }
-    if (ready && session && isAdmin) {
+    if (isAdmin) {
       router.replace("/admin");
     }
+    return undefined;
   }, [isAdmin, ready, router, session]);
 
   if (!ready || !session || isAdmin) {

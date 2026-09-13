@@ -13,6 +13,7 @@ import {
 import {
   firebaseAddEnquiry,
   firebaseAuthEnabled,
+  firebaseCurrentUserId,
   firebaseEnrichSession,
   firebaseGetEnquiries,
   firebaseGetIdToken,
@@ -40,6 +41,7 @@ import {
   logoutUser,
   markNewSignupWelcome,
   registerUser,
+  setSession as persistPortalSession,
   toggleSavedProperty,
   type PortalEnquiry,
   type PortalSession,
@@ -97,6 +99,21 @@ async function staffPasswordLogin(
     };
   } catch {
     return null;
+  }
+}
+
+async function attachStaffCookieFromToken() {
+  const idToken = await firebaseGetIdToken();
+  if (!idToken) return;
+  try {
+    await fetch("/api/admin/session", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+  } catch {
+    // Cookie is optional when Firebase Auth is already signed in.
   }
 }
 
@@ -193,11 +210,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const usingFirebase = firebaseAuthEnabled();
-  // Firebase sessions always come from Auth + Firestore profile (phone is Firestore-only).
   const [session, setSession] = useState<PortalSession | null>(() => {
     if (typeof window === "undefined") return null;
-    if (!usingFirebase) return getSession();
-    return null;
+    const local = getSession();
+    if (!local) return null;
+    // Staff must come from Firebase or the staff cookie, not a leftover local row.
+    if (usingFirebase && isAdminEmail(local.email)) return null;
+    return local;
   });
   const [ready, setReady] = useState(() => !usingFirebase);
   const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
@@ -209,17 +228,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (next: PortalSession | null, epoch?: number) => {
       if (epoch !== undefined && epoch !== authEpoch.current) return;
       if (!next) {
+        persistPortalSession(null);
         setSession(null);
         setSavedSlugs([]);
         setEnquiries([]);
         return;
       }
 
-      const cookieStaff = next.userId === "mra-staff-admin";
-      if (usingFirebase && !cookieStaff) {
+      // Keep the user signed in immediately; profile extras can follow.
+      setSession(next);
+      if (!isAdminEmail(next.email)) persistPortalSession(next);
+
+      const canUseFirestore =
+        usingFirebase && firebaseCurrentUserId() === next.userId;
+      if (canUseFirestore) {
         try {
           const enriched = await firebaseEnrichSession(next);
+          if (epoch !== undefined && epoch !== authEpoch.current) return;
           setSession(enriched);
+          if (!isAdminEmail(enriched.email)) persistPortalSession(enriched);
           const [saved, rawEnquiries, live] = await Promise.all([
             firebaseGetSavedSlugs(enriched.userId),
             firebaseGetEnquiries(enriched.userId),
@@ -232,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               )
               .catch(() => [] as string[]),
           ]);
+          if (epoch !== undefined && epoch !== authEpoch.current) return;
           const enquiryList = filterOwnEnquiries(
             enriched.userId,
             enriched.email,
@@ -249,7 +277,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
           setEnquiries(mergeEnquiryUpdates(enquiryList, updates));
         } catch {
-          setSession(next);
           setSavedSlugs([]);
           setEnquiries([]);
         }
@@ -293,23 +320,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (usingFirebase) {
       const unsub = watchFirebaseSession((next) => {
-        const epoch = ++authEpoch.current;
         void (async () => {
-          if (next) {
-            hadFirebaseUser.current = true;
-            await loadUserData(next, epoch);
-          } else {
+          try {
+            if (next) {
+              hadFirebaseUser.current = true;
+              await loadUserData(next, authEpoch.current);
+              return;
+            }
+            const epoch = authEpoch.current;
             const staff = await fetchStaffSession();
             if (epoch !== authEpoch.current) return;
+            if (firebaseCurrentUserId()) return;
             if (staff) {
               hadFirebaseUser.current = false;
               await loadUserData(staff, epoch);
-            } else if (hadFirebaseUser.current) {
+              return;
+            }
+            const local = getSession();
+            if (local && !isAdminEmail(local.email)) {
+              await loadUserData(local, epoch);
+              return;
+            }
+            if (hadFirebaseUser.current) {
               hadFirebaseUser.current = false;
               await loadUserData(null, epoch);
             }
+          } finally {
+            setReady(true);
           }
-          if (epoch === authEpoch.current) setReady(true);
         })();
       });
       return unsub;
@@ -341,9 +379,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const refresh = async () => {
       try {
-        const list = usingFirebase
-          ? await firebaseGetEnquiries(userId)
-          : getEnquiries(userId, email);
+        const list =
+          usingFirebase && firebaseCurrentUserId() === userId
+            ? await firebaseGetEnquiries(userId)
+            : getEnquiries(userId, email);
         await applyList(list);
       } catch {
         // Keep the last good list so a staff update cannot blank or crash the page.
@@ -355,11 +394,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void refresh();
     }, 4000);
 
-    const unsub = usingFirebase
-      ? firebaseWatchEnquiries(userId, (list) => {
-          void applyList(list);
-        })
-      : () => undefined;
+    const unsub =
+      usingFirebase && firebaseCurrentUserId() === userId
+        ? firebaseWatchEnquiries(userId, (list) => {
+            void applyList(list);
+          })
+        : () => undefined;
 
     return () => {
       cancelled = true;
@@ -375,39 +415,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminEmail(session?.email),
       usingFirebase,
       login: async (email, password) => {
+        const trimmed = email.trim().toLowerCase();
         const epoch = ++authEpoch.current;
-        if (isAdminEmail(email) && usingFirebase) {
+        let next: PortalSession | null = null;
+        let lastError: unknown;
+
+        if (isAdminEmail(trimmed) && usingFirebase) {
           try {
-            await loadUserData(await firebaseLogin(email, password), epoch);
-            return;
-          } catch {
-            // Fall through to the env staff password, then local accounts.
-          }
-        }
-        if (isAdminEmail(email)) {
-          const staff = await staffPasswordLogin(email, password);
-          if (staff) {
-            await loadUserData(staff, epoch);
-            return;
-          }
-        }
-        if (usingFirebase) {
-          try {
-            await loadUserData(await firebaseLogin(email, password), epoch);
-            return;
+            next = await firebaseLogin(trimmed, password);
           } catch (error) {
-            if (!isAdminEmail(email)) {
-              try {
-                await loadUserData(await loginUser({ email, password }), epoch);
-                return;
-              } catch {
-                // Keep the Firebase error for the customer.
-              }
-            }
-            throw error;
+            lastError = error;
           }
         }
-        await loadUserData(await loginUser({ email, password }), epoch);
+
+        if (!next && isAdminEmail(trimmed)) {
+          next = await staffPasswordLogin(trimmed, password);
+        }
+
+        if (!next && usingFirebase && !isAdminEmail(trimmed)) {
+          try {
+            next = await firebaseLogin(trimmed, password);
+          } catch (error) {
+            lastError = error;
+            try {
+              next = await loginUser({ email: trimmed, password });
+            } catch {
+              throw error;
+            }
+          }
+        }
+
+        if (!next && !usingFirebase) {
+          next = await loginUser({ email: trimmed, password });
+        }
+
+        if (!next) {
+          throw lastError instanceof Error
+            ? lastError
+            : new Error("Incorrect email or password.");
+        }
+
+        if (isAdminEmail(next.email) && next.userId !== "mra-staff-admin") {
+          await attachStaffCookieFromToken();
+        }
+        hadFirebaseUser.current = firebaseCurrentUserId() === next.userId;
+        await loadUserData(next, epoch);
+        setReady(true);
       },
       register: async (input) => {
         const epoch = ++authEpoch.current;
@@ -419,10 +472,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Local copy is only a fallback if Firebase sign-in is unavailable.
           }
           markNewSignupWelcome();
+          setReady(true);
           return;
         }
         await loadUserData(await registerUser(input), epoch);
         markNewSignupWelcome();
+        setReady(true);
       },
       logout: () => {
         authEpoch.current += 1;

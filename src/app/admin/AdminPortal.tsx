@@ -150,12 +150,15 @@ export function AdminPortal() {
   useEffect(() => {
     if (!ready) return;
     if (!session) {
-      router.replace("/login?next=/admin#login-form");
-      return;
+      const timer = window.setTimeout(() => {
+        router.replace("/login?next=/admin#login-form");
+      }, 500);
+      return () => window.clearTimeout(timer);
     }
     if (!isAdmin) {
       router.replace("/account");
     }
+    return undefined;
   }, [isAdmin, ready, router, session]);
 
   useEffect(() => {

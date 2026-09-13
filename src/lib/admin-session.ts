@@ -11,12 +11,16 @@ function adminEmail() {
   );
 }
 
-function sessionSecret() {
-  return process.env.ADMIN_PASSWORD?.trim() || "";
+function signingSecret() {
+  return (
+    process.env.ADMIN_PASSWORD?.trim() ||
+    process.env.ADMIN_SESSION_SECRET?.trim() ||
+    `mra-staff:${adminEmail()}:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "dev"}`
+  );
 }
 
 function sign(payload: string) {
-  return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
+  return createHmac("sha256", signingSecret()).update(payload).digest("base64url");
 }
 
 function passwordsMatch(given: string, expected: string) {
@@ -26,7 +30,7 @@ function passwordsMatch(given: string, expected: string) {
 }
 
 export function createStaffSessionToken(email: string): string | null {
-  if (!sessionSecret()) return null;
+  if (!email.trim()) return null;
   const payload = Buffer.from(
     JSON.stringify({
       email: email.trim().toLowerCase(),
@@ -37,7 +41,7 @@ export function createStaffSessionToken(email: string): string | null {
 }
 
 export function verifyStaffSessionToken(token: string): string | null {
-  if (!sessionSecret() || !token.includes(".")) return null;
+  if (!token.includes(".")) return null;
   const dot = token.lastIndexOf(".");
   const payload = token.slice(0, dot);
   const sig = token.slice(dot + 1);
@@ -62,7 +66,7 @@ export function verifyStaffSessionToken(token: string): string | null {
 }
 
 export function staffPasswordMatches(password: string): boolean {
-  const expected = sessionSecret();
+  const expected = process.env.ADMIN_PASSWORD?.trim() || "";
   if (!expected) return false;
   return passwordsMatch(password, expected);
 }
