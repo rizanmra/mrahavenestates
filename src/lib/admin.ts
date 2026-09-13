@@ -1,15 +1,26 @@
 /** Public admin helpers — safe to import from client components. */
 
-export const DEFAULT_ADMIN_EMAIL = "mrahavenestates@gmail.com";
+export type AssignedAdmin = {
+  userId: string;
+  email: string;
+};
 
-export function getPublicAdminEmail(): string {
-  return (
-    process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ||
-    DEFAULT_ADMIN_EMAIL
-  );
+let cachedAdmin: AssignedAdmin | null = null;
+
+export function getCachedAdmin(): AssignedAdmin | null {
+  return cachedAdmin;
 }
 
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return email.trim().toLowerCase() === getPublicAdminEmail();
+export function setCachedAdmin(admin: AssignedAdmin | null) {
+  cachedAdmin = admin;
+}
+
+export function isAdminAccount(
+  email: string | null | undefined,
+  userId?: string | null,
+): boolean {
+  if (!cachedAdmin) return false;
+  if (userId && cachedAdmin.userId === userId) return true;
+  const normalized = email?.trim().toLowerCase();
+  return Boolean(normalized && cachedAdmin.email === normalized);
 }

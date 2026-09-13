@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { site } from "@/data/site";
-import { isAdminEmail } from "@/lib/admin";
 import {
   formatPhoneForStorage,
   validateEmail,
@@ -110,9 +109,11 @@ export function LoginPortal() {
     setError("");
     setBusy(true);
     try {
-      const email = String(form.get("email") ?? "").trim().toLowerCase();
-      await login(email, String(form.get("password") ?? ""));
-      router.replace(isAdminEmail(email) ? "/admin" : nextPath);
+      const signedIn = await login(
+        String(form.get("email") ?? ""),
+        String(form.get("password") ?? ""),
+      );
+      router.replace(signedIn.isAdmin ? "/admin" : nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in.");
     } finally {
@@ -147,13 +148,13 @@ export function LoginPortal() {
     setError("");
     setBusy(true);
     try {
-      await register({
+      const created = await register({
         name: name.trim().replace(/\s+/g, " "),
         email: email.trim().toLowerCase(),
         phone: formatPhoneForStorage(phone),
         password,
       });
-      router.replace(isAdmin ? "/admin" : nextPath);
+      router.replace(created.isAdmin ? "/admin" : nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account.");
     } finally {

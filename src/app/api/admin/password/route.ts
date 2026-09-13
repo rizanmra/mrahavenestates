@@ -21,7 +21,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await changeStaffPassword({ currentPassword, newPassword });
+  const result = await changeStaffPassword({
+    email: auth.email,
+    currentPassword,
+    newPassword,
+  });
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
   }

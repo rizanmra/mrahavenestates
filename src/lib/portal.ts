@@ -1,19 +1,9 @@
-import { getPublicAdminEmail, isAdminEmail } from "@/lib/admin";
-
-export type PortalUser = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  passwordHash: string;
-  createdAt: number;
-};
-
 export type PortalSession = {
   userId: string;
   email: string;
   name: string;
   phone?: string;
+  isAdmin?: boolean;
 };
 
 export type SavedPropertyRecord = {
@@ -148,6 +138,17 @@ export function filterOwnEnquiries(
 
 const USERS_KEY = "mra-portal-users";
 const SESSION_KEY = "mra-portal-session";
+
+/** Remove leftover local username/password copies. Auth is Firebase only. */
+export function clearLocalAccounts() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(USERS_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore private mode
+  }
+}
 const SAVED_KEY = "mra-portal-saved";
 const NEW_SIGNUP_WELCOME_KEY = "mra-portal-new-signup";
 
@@ -189,18 +190,6 @@ function writeJson(key: string, value: unknown) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-export function getUsers(): PortalUser[] {
-  return readJson<PortalUser[]>(USERS_KEY, []);
-}
-
 export function getSession(): PortalSession | null {
   return readJson<PortalSession | null>(SESSION_KEY, null);
 }
@@ -211,91 +200,6 @@ export function setSession(session: PortalSession | null) {
     return;
   }
   writeJson(SESSION_KEY, session);
-}
-
-export async function ensureDemoAdminAccount() {
-  const email = getPublicAdminEmail();
-  const users = getUsers();
-  if (users.some((user) => user.email === email)) return;
-
-  const password = "HavenAdmin2026!";
-  const user: PortalUser = {
-    id: "mra-staff-admin",
-    name: "MRA Admin",
-    email,
-    phone: "03301333786",
-    passwordHash: await hashPassword(password),
-    createdAt: Date.now(),
-  };
-  writeJson(USERS_KEY, [...users, user]);
-}
-
-export async function registerUser(input: {
-  name: string;
-  email: string;
-  phone: string;
-  password: string;
-}): Promise<PortalSession> {
-  const email = input.email.trim().toLowerCase();
-  const users = getUsers();
-
-  if (users.some((user) => user.email === email)) {
-    throw new Error("An account with this email already exists.");
-  }
-
-  if (input.password.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
-  }
-
-  if (isAdminEmail(email)) {
-    throw new Error("This email is reserved for staff. Please log in instead.");
-  }
-
-  const user: PortalUser = {
-    id: crypto.randomUUID(),
-    name: input.name.trim(),
-    email,
-    phone: input.phone.trim(),
-    passwordHash: await hashPassword(input.password),
-    createdAt: Date.now(),
-  };
-
-  writeJson(USERS_KEY, [...users, user]);
-  const session = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    phone: user.phone,
-  };
-  setSession(session);
-  return session;
-}
-
-export async function loginUser(input: {
-  email: string;
-  password: string;
-}): Promise<PortalSession> {
-  const email = input.email.trim().toLowerCase();
-  const users = getUsers();
-  const user = users.find((item) => item.email === email);
-
-  if (!user) {
-    throw new Error("No account found for this email.");
-  }
-
-  const hash = await hashPassword(input.password);
-  if (hash !== user.passwordHash) {
-    throw new Error("Incorrect password.");
-  }
-
-  const session = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    phone: user.phone,
-  };
-  setSession(session);
-  return session;
 }
 
 export function logoutUser() {

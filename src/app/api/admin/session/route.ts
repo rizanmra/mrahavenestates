@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
-import { getAdminEmail, lookupFirebaseEmail } from "@/lib/admin-server";
+import {
+  claimOrGetAdmin,
+  getAssignedAdmin,
+  lookupFirebaseUser,
+} from "@/lib/admin-server";
 import {
   createStaffSessionToken,
   readStaffSessionCookie,
   staffCookieHeader,
-  staffPasswordMatches,
   verifyStaffSessionToken,
 } from "@/lib/admin-session";
 
-function staffProfile(email: string) {
+function staffProfile(email: string, userId: string) {
   return {
     ok: true as const,
-    userId: "mra-staff-admin",
+    userId,
     email,
     name: process.env.ADMIN_NAME?.trim() || "MRA Admin",
     phone: process.env.ADMIN_PHONE?.trim() || "",
+    isAdmin: true as const,
   };
 }
 
@@ -23,39 +27,33 @@ export async function GET(request: Request) {
   if (!email) {
     return NextResponse.json({ ok: false });
   }
-  return NextResponse.json(staffProfile(email));
+  const assigned = await getAssignedAdmin();
+  if (!assigned || assigned.email !== email) {
+    return NextResponse.json({ ok: false });
+  }
+  return NextResponse.json(staffProfile(email, assigned.userId));
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
-    email?: string;
-    password?: string;
-    idToken?: string;
-  };
-
-  let email = "";
+  const body = (await request.json()) as { idToken?: string };
   const idToken = String(body.idToken ?? "").trim();
-  if (idToken) {
-    const fromToken = await lookupFirebaseEmail(idToken);
-    if (!fromToken || fromToken !== getAdminEmail()) {
-      return NextResponse.json(
-        { ok: false, error: "Incorrect email or password." },
-        { status: 401 },
-      );
-    }
-    email = fromToken;
-  } else {
-    email = String(body.email ?? "").trim().toLowerCase();
-    const password = String(body.password ?? "");
-    if (email !== getAdminEmail() || !staffPasswordMatches(password)) {
-      return NextResponse.json(
-        { ok: false, error: "Incorrect email or password." },
-        { status: 401 },
-      );
-    }
+  const user = await lookupFirebaseUser(idToken);
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, error: "Incorrect email or password." },
+      { status: 401 },
+    );
   }
 
-  const token = createStaffSessionToken(email);
+  const claimed = await claimOrGetAdmin(user, idToken);
+  if (!claimed.isAdmin) {
+    return NextResponse.json(
+      { ok: false, error: "Admin access only." },
+      { status: 403 },
+    );
+  }
+
+  const token = createStaffSessionToken(user.email);
   if (!token) {
     return NextResponse.json(
       { ok: false, error: "Staff session could not be created." },
@@ -63,7 +61,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = NextResponse.json(staffProfile(email));
+  const res = NextResponse.json(staffProfile(user.email, user.userId));
   res.headers.set("Set-Cookie", staffCookieHeader(token));
   return res;
 }

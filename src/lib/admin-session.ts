@@ -1,32 +1,17 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { DEFAULT_ADMIN_EMAIL } from "@/lib/admin";
 
 export const STAFF_SESSION_COOKIE = "mra_staff_session";
 
-function adminEmail() {
-  return (
-    process.env.ADMIN_EMAIL?.trim().toLowerCase() ||
-    process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ||
-    DEFAULT_ADMIN_EMAIL
-  );
-}
-
 function signingSecret() {
   return (
-    process.env.ADMIN_PASSWORD?.trim() ||
     process.env.ADMIN_SESSION_SECRET?.trim() ||
-    `mra-staff:${adminEmail()}:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "dev"}`
+    process.env.ADMIN_PASSWORD?.trim() ||
+    `mra-staff:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "dev"}`
   );
 }
 
 function sign(payload: string) {
   return createHmac("sha256", signingSecret()).update(payload).digest("base64url");
-}
-
-function passwordsMatch(given: string, expected: string) {
-  const left = createHmac("sha256", "mra-staff").update(given).digest();
-  const right = createHmac("sha256", "mra-staff").update(expected).digest();
-  return timingSafeEqual(left, right);
 }
 
 export function createStaffSessionToken(email: string): string | null {
@@ -57,18 +42,12 @@ export function verifyStaffSessionToken(token: string): string | null {
       exp?: number;
     };
     const email = String(parsed.email ?? "").trim().toLowerCase();
-    if (!email || email !== adminEmail()) return null;
+    if (!email) return null;
     if (!parsed.exp || parsed.exp < Date.now()) return null;
     return email;
   } catch {
     return null;
   }
-}
-
-export function staffPasswordMatches(password: string): boolean {
-  const expected = process.env.ADMIN_PASSWORD?.trim() || "";
-  if (!expected) return false;
-  return passwordsMatch(password, expected);
 }
 
 export function readStaffSessionCookie(request: Request): string | null {

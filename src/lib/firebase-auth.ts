@@ -12,7 +12,7 @@ import {
   onSnapshot,
   setDoc,
 } from "firebase/firestore";
-import { isAdminEmail } from "@/lib/admin";
+import { setCachedAdmin } from "@/lib/admin";
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase";
 import { formatPhoneForStorage } from "@/lib/form-validation";
 import type { PortalEnquiry, PortalSession } from "@/lib/portal";
@@ -115,16 +115,36 @@ async function fetchProfile(
   }
 }
 
+async function resolveAdminRole(session: PortalSession): Promise<PortalSession> {
+  const token = await firebaseGetIdToken();
+  if (!token) return { ...session, isAdmin: false };
+  try {
+    const res = await fetch("/api/admin/claim", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      isAdmin?: boolean;
+      admin?: { userId: string; email: string } | null;
+    };
+    if (data.admin) setCachedAdmin(data.admin);
+    return { ...session, isAdmin: Boolean(data.ok && data.isAdmin) };
+  } catch {
+    return { ...session, isAdmin: false };
+  }
+}
+
 async function toSession(user: User): Promise<PortalSession> {
   const profile = await fetchProfile(user.uid);
   const name = profile.name || user.displayName?.trim() || "Client";
-  return {
+  return resolveAdminRole({
     userId: user.uid,
     email: user.email ?? "",
     name,
     // Phone lives only in Firestore (not Firebase Auth email/password).
     phone: profile.phone || undefined,
-  };
+  });
 }
 
 /** Refresh name/phone from Firestore onto an existing session. */
@@ -132,11 +152,11 @@ export async function firebaseEnrichSession(
   session: PortalSession,
 ): Promise<PortalSession> {
   const profile = await fetchProfile(session.userId);
-  return {
+  return resolveAdminRole({
     ...session,
     name: profile.name || session.name,
     phone: profile.phone || undefined,
-  };
+  });
 }
 
 export function firebaseAuthEnabled(): boolean {
@@ -161,18 +181,19 @@ export function watchFirebaseSession(
       onChange(null);
       return;
     }
-    // Apply Auth immediately so login is not blocked by Firestore.
-    onChange({
-      userId: user.uid,
-      email: user.email ?? "",
-      name: user.displayName?.trim() || "Client",
-      phone: undefined,
-    });
     void toSession(user)
       .then((full) => {
         if (full.userId === user.uid) onChange(full);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        onChange({
+          userId: user.uid,
+          email: user.email ?? "",
+          name: user.displayName?.trim() || "Client",
+          phone: undefined,
+          isAdmin: false,
+        });
+      });
   });
 }
 
@@ -207,10 +228,6 @@ export async function firebaseRegister(input: {
 
   if (input.password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
-  }
-
-  if (isAdminEmail(input.email)) {
-    throw new Error("This email is reserved for staff. Please log in instead.");
   }
 
   try {

@@ -4,7 +4,7 @@ import {
   newPropertyEnquiryId,
   savePropertyEnquiry,
 } from "@/lib/admin-server";
-import { isAdminEmail } from "@/lib/admin";
+import { getAssignedAdmin } from "@/lib/admin-server";
 import { getContactReason, isContactReasonId } from "@/data/contact-reasons";
 import {
   formatPhoneForStorage,
@@ -319,7 +319,8 @@ export async function POST(request: Request) {
 
     const cleanName = name.trim().replace(/\s+/g, " ");
     const cleanEmail = email.trim().toLowerCase();
-    if (isAdminEmail(cleanEmail)) {
+    const assignedAdmin = await getAssignedAdmin();
+    if (assignedAdmin && assignedAdmin.email === cleanEmail) {
       return NextResponse.json(
         {
           ok: false,

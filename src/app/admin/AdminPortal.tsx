@@ -90,14 +90,10 @@ export function AdminPortal() {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (usingFirebase) {
-      const token = await firebaseGetIdToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
-    } else if (session?.email) {
-      headers["x-admin-email"] = session.email;
-    }
+    const token = await firebaseGetIdToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
     return headers;
-  }, [session?.email, usingFirebase]);
+  }, []);
 
   const loadEnquiries = useCallback(async () => {
     const res = await fetch("/api/admin/property-enquiries", {

@@ -1,12 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getPublicAdminEmail } from "@/lib/admin";
 import {
   readStaffSessionCookie,
   verifyStaffSessionToken,
 } from "@/lib/admin-session";
 import { recordClientEnquiryStatusUpdate } from "@/lib/client-enquiry-updates";
-import { getAdminFirestore } from "@/lib/firebase-admin";
+import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
 import {
   isPropertyEnquiryRecord,
   type PropertyEnquiryRecord,
@@ -22,27 +21,13 @@ let memoryInbox: PropertyEnquiryRecord[] = [];
 type TokenCache = { token: string; expiresAt: number };
 let staffToken: TokenCache | null = null;
 
-export function getAdminEmail(): string {
-  return (
-    process.env.ADMIN_EMAIL?.trim().toLowerCase() || getPublicAdminEmail()
-  );
-}
-
-export function getAdminPassword(): string | null {
-  const password = process.env.ADMIN_PASSWORD?.trim();
-  return password || null;
-}
+export type AssignedAdmin = {
+  userId: string;
+  email: string;
+};
 
 function firebaseApiKey() {
   return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
-}
-
-function getAdminDisplayName() {
-  return process.env.ADMIN_NAME?.trim() || "MRA Admin";
-}
-
-function getAdminPhone() {
-  return process.env.ADMIN_PHONE?.trim() || "";
 }
 
 function firebaseProjectId() {
@@ -53,9 +38,9 @@ function firebaseProjectId() {
   );
 }
 
-export async function lookupFirebaseEmail(
+export async function lookupFirebaseUser(
   idToken: string,
-): Promise<string | null> {
+): Promise<{ email: string; userId: string } | null> {
   const apiKey = firebaseApiKey();
   if (!apiKey || !idToken) return null;
 
@@ -70,161 +55,214 @@ export async function lookupFirebaseEmail(
   );
   if (!res.ok) return null;
   const data = (await res.json()) as {
-    users?: { email?: string }[];
+    users?: { email?: string; localId?: string }[];
   };
-  const email = data.users?.[0]?.email;
-  return email ? email.trim().toLowerCase() : null;
+  const email = data.users?.[0]?.email?.trim().toLowerCase();
+  const userId = data.users?.[0]?.localId?.trim();
+  if (!email || !userId) return null;
+  return { email, userId };
+}
+
+export async function lookupFirebaseEmail(
+  idToken: string,
+): Promise<string | null> {
+  const user = await lookupFirebaseUser(idToken);
+  return user?.email ?? null;
+}
+
+function matchesAdmin(
+  admin: AssignedAdmin,
+  user: { email?: string; userId?: string },
+) {
+  if (user.userId && admin.userId === user.userId) return true;
+  return Boolean(user.email && admin.email === user.email);
+}
+
+async function readAssignedAdminFromSdk(): Promise<AssignedAdmin | null> {
+  const db = getAdminFirestore();
+  if (!db) return null;
+  const snap = await db.doc("config/admin").get();
+  if (!snap.exists) return null;
+  const data = snap.data() as { userId?: string; email?: string } | undefined;
+  const userId = data?.userId?.trim();
+  const email = data?.email?.trim().toLowerCase();
+  if (!userId || !email) return null;
+  return { userId, email };
+}
+
+async function writeAssignedAdminWithSdk(admin: AssignedAdmin): Promise<boolean> {
+  const db = getAdminFirestore();
+  if (!db) return false;
+  try {
+    await db.doc("config/admin").create({
+      userId: admin.userId,
+      email: admin.email,
+      claimedAt: Date.now(),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readAssignedAdminFromRest(
+  idToken?: string,
+): Promise<AssignedAdmin | null> {
+  const projectId = firebaseProjectId();
+  const apiKey = firebaseApiKey();
+  if (!projectId || !apiKey) return null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (idToken) headers.Authorization = `Bearer ${idToken}`;
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/config/admin?key=${encodeURIComponent(apiKey)}`,
+    { headers, signal: AbortSignal.timeout(15000) },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    fields?: { userId?: { stringValue?: string }; email?: { stringValue?: string } };
+  };
+  const userId = data.fields?.userId?.stringValue?.trim();
+  const email = data.fields?.email?.stringValue?.trim().toLowerCase();
+  if (!userId || !email) return null;
+  return { userId, email };
+}
+
+async function writeAssignedAdminWithRest(
+  admin: AssignedAdmin,
+  idToken: string,
+): Promise<boolean> {
+  const projectId = firebaseProjectId();
+  const apiKey = firebaseApiKey();
+  if (!projectId || !apiKey) return false;
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/config/admin?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fields: {
+          userId: { stringValue: admin.userId },
+          email: { stringValue: admin.email },
+          claimedAt: { integerValue: String(Date.now()) },
+        },
+      }),
+      signal: AbortSignal.timeout(15000),
+    },
+  );
+  return res.ok;
+}
+
+let memoryAdmin: AssignedAdmin | null = null;
+
+export async function getAssignedAdmin(
+  idToken?: string,
+): Promise<AssignedAdmin | null> {
+  if (memoryAdmin) return memoryAdmin;
+  try {
+    const fromSdk = await readAssignedAdminFromSdk();
+    if (fromSdk) {
+      memoryAdmin = fromSdk;
+      return fromSdk;
+    }
+  } catch {
+    // Fall through to REST.
+  }
+  try {
+    const fromRest = await readAssignedAdminFromRest(idToken);
+    if (fromRest) memoryAdmin = fromRest;
+    return fromRest;
+  } catch {
+    return null;
+  }
+}
+
+async function firstFirebaseAuthUser(): Promise<AssignedAdmin | null> {
+  const auth = getAdminAuth();
+  if (!auth) return null;
+  try {
+    const list = await auth.listUsers(10);
+    if (list.users.length === 0) return null;
+    const first = [...list.users].sort((left, right) =>
+      String(left.metadata.creationTime).localeCompare(
+        String(right.metadata.creationTime),
+      ),
+    )[0];
+    const email = first?.email?.trim().toLowerCase();
+    const userId = first?.uid;
+    if (!email || !userId) return null;
+    return { userId, email };
+  } catch {
+    return null;
+  }
+}
+
+export async function claimOrGetAdmin(
+  user: AssignedAdmin,
+  idToken?: string,
+): Promise<{ isAdmin: boolean; admin: AssignedAdmin | null }> {
+  let existing = await getAssignedAdmin(idToken);
+  if (!existing) {
+    existing = await firstFirebaseAuthUser();
+  }
+  if (!existing) {
+    existing = {
+      userId: user.userId,
+      email: user.email.trim().toLowerCase(),
+    };
+  }
+  memoryAdmin = existing;
+  try {
+    const viaSdk = await writeAssignedAdminWithSdk(existing);
+    if (!viaSdk && idToken) {
+      await writeAssignedAdminWithRest(existing, idToken);
+    }
+  } catch {
+    if (idToken) {
+      await writeAssignedAdminWithRest(existing, idToken).catch(() => false);
+    }
+  }
+  return { isAdmin: matchesAdmin(existing, user), admin: existing };
 }
 
 export async function requireAdminFromRequest(
   request: Request,
 ): Promise<{ ok: true; email: string } | { ok: false; status: number; error: string }> {
+  const header = request.headers.get("authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const assigned = await getAssignedAdmin(token || undefined);
+
   const cookieEmail = verifyStaffSessionToken(readStaffSessionCookie(request) || "");
-  if (cookieEmail) {
+  if (cookieEmail && assigned && cookieEmail === assigned.email) {
     return { ok: true, email: cookieEmail };
   }
 
-  const header = request.headers.get("authorization") || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) {
-    const demoEmail = request.headers.get("x-admin-email")?.trim().toLowerCase();
-    if (!firebaseApiKey() && demoEmail === getAdminEmail()) {
-      return { ok: true, email: demoEmail };
-    }
     return { ok: false, status: 401, error: "Sign in as an admin to continue." };
   }
 
-  const email = await lookupFirebaseEmail(token);
-  if (!email || email !== getAdminEmail()) {
+  const user = await lookupFirebaseUser(token);
+  if (!user) {
+    return { ok: false, status: 401, error: "Sign in as an admin to continue." };
+  }
+
+  const claimed = await claimOrGetAdmin(user, token);
+  if (!claimed.isAdmin) {
     return { ok: false, status: 403, error: "Admin access only." };
   }
-  return { ok: true, email };
-}
-
-export async function seedAdminAccount(): Promise<{
-  created: boolean;
-  email: string;
-  reason?: string;
-}> {
-  const email = getAdminEmail();
-  const password = getAdminPassword();
-  const apiKey = firebaseApiKey();
-
-  if (!password) {
-    return { created: false, email, reason: "ADMIN_PASSWORD is not set." };
-  }
-  if (!apiKey) {
-    return { created: false, email, reason: "Firebase API key is not set." };
-  }
-
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        returnSecureToken: true,
-      }),
-      signal: AbortSignal.timeout(15000),
-    },
-  );
-  const data = (await res.json()) as {
-    idToken?: string;
-    localId?: string;
-    error?: { message?: string };
-  };
-
-  let idToken = data.idToken;
-  let userId = data.localId;
-  let created = true;
-
-  if (data.error?.message === "EMAIL_EXISTS") {
-    const signedIn = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          returnSecureToken: true,
-        }),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
-    const existing = (await signedIn.json()) as {
-      idToken?: string;
-      localId?: string;
-      error?: { message?: string };
-    };
-    if (!signedIn.ok || !existing.idToken) {
-      return {
-        created: false,
-        email,
-        reason:
-          existing.error?.message ||
-          "Admin email already exists with a different password.",
-      };
-    }
-    idToken = existing.idToken;
-    userId = existing.localId;
-    created = false;
-  } else if (!res.ok || !idToken) {
-    return {
-      created: false,
-      email,
-      reason: data.error?.message || "Could not create admin account.",
-    };
-  }
-
-  const displayName = getAdminDisplayName();
-  await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        idToken,
-        displayName,
-      }),
-      signal: AbortSignal.timeout(15000),
-    },
-  ).catch(() => undefined);
-
-  const projectId = firebaseProjectId();
-  if (projectId && idToken && userId) {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fields: {
-            name: { stringValue: displayName },
-            email: { stringValue: email },
-            phone: { stringValue: getAdminPhone() },
-            role: { stringValue: "admin" },
-            createdAt: { integerValue: String(Date.now()) },
-          },
-        }),
-        signal: AbortSignal.timeout(15000),
-      },
-    ).catch(() => undefined);
-  }
-
-  return { created, email, reason: created ? undefined : "already-exists" };
+  return { ok: true, email: user.email };
 }
 
 async function staffIdToken(): Promise<string | null> {
   const apiKey = firebaseApiKey();
-  const password = getAdminPassword();
-  const email = getAdminEmail();
-  if (!apiKey || !password) return null;
+  const password = process.env.ADMIN_PASSWORD?.trim();
+  const assigned = await getAssignedAdmin();
+  const email = assigned?.email;
+  if (!apiKey || !password || !email) return null;
 
   if (staffToken && Date.now() < staffToken.expiresAt - 60_000) {
     return staffToken.token;
