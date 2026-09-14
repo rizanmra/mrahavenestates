@@ -25,7 +25,7 @@ export default function AboutPage() {
             </p>
             <p>
               From premium property marketing and managed lettings to licensed
-              removals and free valuations, we offer a complete moving solution.
+              removals and Land Registry sold prices, we offer a complete moving solution.
             </p>
             <p>
               We serve clients nationwide across the UK — and we are proud to

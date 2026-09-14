@@ -32,9 +32,9 @@ export default function BuyPage() {
           <Link href="/sell" className="text-[color:var(--gold)]">
             Sell your property
           </Link>{" "}
-          or book a{" "}
+          or check the{" "}
           <Link href="/free-valuation" className="text-[color:var(--gold)]">
-            free valuation
+            Land Registry sold price
           </Link>
           .
         </p>

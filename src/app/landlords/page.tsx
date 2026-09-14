@@ -16,7 +16,7 @@ export default function LandlordsPage() {
         image={siteImages.landlords}
       />
       <InfoBody
-        cta={{ label: "Book a rental valuation", href: "/free-valuation" }}
+        cta={{ label: "Speak to our lettings team", href: "/contact?reason=lettings" }}
         bullets={[
           "Tenant find, rent collection, or fully managed",
           "Compliance handled — gas, electric, EPC, deposits",

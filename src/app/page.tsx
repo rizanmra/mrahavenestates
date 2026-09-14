@@ -4,14 +4,14 @@ import { HeroExperience } from "@/components/hero/HeroExperience";
 import { RemovalSection } from "@/components/RemovalSection";
 import { ServiceCards } from "@/components/ServiceCards";
 import { Testimonials } from "@/components/Testimonials";
-import { ValuationCTA } from "@/components/ValuationCTA";
+import FreeValuationForm from "@/app/free-valuation/FreeValuationForm";
 import { WhyChooseUs } from "@/components/WhyChooseUs";
 
 export default function HomePage() {
   return (
     <>
       <HeroExperience />
-      <ValuationCTA />
+      <FreeValuationForm embedded />
       <ServiceCards />
       <WhyChooseUs />
       <FeaturedProperties />

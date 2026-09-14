@@ -40,7 +40,7 @@ export const pages: Record<string, PageContent> = {
       "Social media and email campaigns to our buyer database",
       "Regular feedback and viewing reports",
     ],
-    cta: { label: "Book a free valuation", href: "/free-valuation" },
+    cta: { label: "Find market value", href: "/free-valuation" },
   },
   "sell/auction": {
     title: "Sell at Auction",
@@ -154,7 +154,7 @@ export const pages: Record<string, PageContent> = {
       "Accompanied viewings with feedback",
       "Pre-qualified applicants only",
     ],
-    cta: { label: "Book a rental valuation", href: "/free-valuation" },
+    cta: { label: "Speak to our lettings team", href: "/contact?reason=lettings" },
   },
   "landlords/insurance": {
     title: "Landlord Insurance",

@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/property-value-calculator",
+        destination: "/free-valuation",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

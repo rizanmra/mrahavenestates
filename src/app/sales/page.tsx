@@ -41,7 +41,7 @@ export default function SalesPage() {
               href="/free-valuation"
               className="btn-gold px-8 py-3 text-sm font-medium uppercase"
             >
-              Free valuation
+              Market value
             </Link>
             <Link
               href="/sell"

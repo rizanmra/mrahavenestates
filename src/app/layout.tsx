@@ -22,12 +22,12 @@ export const metadata: Metadata = {
     template: "%s | MRA Haven Estates",
   },
   description:
-    "Sales, lettings, removals and free valuations nationwide across the UK. Instant property value calculator. Call 0330 133 3786.",
+    "Sales, lettings, removals and Land Registry sold prices nationwide across the UK. Call 0330 133 3786.",
   metadataBase: new URL("https://www.mrahavenestates.co.uk"),
   openGraph: {
     title: "MRA Haven Estates",
     description:
-      "Sales, lettings, removals and free valuations nationwide across the UK.",
+      "Sales, lettings, removals and Land Registry sold prices nationwide across the UK.",
     siteName: "MRA Haven Estates",
     type: "website",
   },

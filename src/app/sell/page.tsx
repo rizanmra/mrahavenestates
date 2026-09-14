@@ -16,7 +16,7 @@ export default function SellPage() {
         image={siteImages.sales}
       />
       <InfoBody
-        cta={{ label: "Book free valuation", href: "/free-valuation" }}
+        cta={{ label: "Find market value", href: "/free-valuation" }}
         bullets={[
           "Professional photography and video tours",
           "Rightmove and Zoopla premium listings",

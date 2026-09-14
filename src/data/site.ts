@@ -27,7 +27,6 @@ export const navLinks = [
   { href: "/sales", label: "Sales" },
   { href: "/lettings", label: "Lettings" },
   { href: "/removal-services", label: "Removal Services" },
-  { href: "/free-valuation", label: "Free Valuation" },
 ];
 
 export const services = [

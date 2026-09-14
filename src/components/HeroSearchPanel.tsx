@@ -57,7 +57,7 @@ export function HeroSearchPanel() {
     <div className="mx-auto w-full max-w-3xl">
       {mode === "value" ? (
         <p className="home-value-prompt mb-3 text-center text-sm tracking-wide text-[color:var(--gold)] md:text-base">
-          Free market estimate — nationwide across the UK
+          Land Registry sold price — nationwide across the UK
         </p>
       ) : null}
 
@@ -118,8 +118,7 @@ export function HeroSearchPanel() {
       <p className="mt-3 text-center text-base text-[color:var(--muted)] md:text-lg">
         {mode === "value" ? (
           <>
-            Instant estimated market value · then book a free accurate
-            valuation
+            Latest sold price from HM Land Registry
           </>
         ) : (
           <>

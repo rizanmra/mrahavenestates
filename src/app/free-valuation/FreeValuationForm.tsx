@@ -1,10 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { formatGbp, type SoldTransaction } from "@/lib/land-registry";
+import {
+  extractPostcode,
+  formatGbp,
+  type SoldTransaction,
+} from "@/lib/land-registry";
 import { validateEmail } from "@/lib/form-validation";
 import { sendInboxEnquiry } from "@/lib/send-inbox-enquiry";
+
+const STORAGE_KEY = "mra-home-value-address";
 
 type Step = "intro" | "address" | "email" | "result";
 
@@ -27,7 +33,11 @@ const mutedText = "text-[color:var(--muted)]";
 const errorClass =
   "rounded-sm border border-[color:var(--gold)]/40 bg-[color:var(--gold)]/10 px-4 py-3 text-sm text-[color:var(--gold)]";
 
-export default function FreeValuationForm() {
+export default function FreeValuationForm({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const { session, recordEnquiry, isAdmin } = useAuth();
   const [step, setStep] = useState<Step>("intro");
   const [address, setAddress] = useState("");
@@ -36,6 +46,41 @@ export default function FreeValuationForm() {
   const [pending, setPending] = useState<LookupSuccess | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function applyHeroAddress(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const foundPostcode = extractPostcode(trimmed);
+    const addressOnly = foundPostcode
+      ? trimmed
+          .replace(new RegExp(foundPostcode.replace(/\s+/g, "\\s*"), "i"), "")
+          .replace(/,\s*$/, "")
+          .trim()
+      : trimmed;
+    setError("");
+    setAddress(addressOnly || trimmed);
+    if (foundPostcode) setPostcode(foundPostcode);
+    setStep("address");
+  }
+
+  useEffect(() => {
+    function onHeroValue(event: Event) {
+      const detail = (event as CustomEvent<{ address?: string }>).detail;
+      applyHeroAddress(detail?.address ?? "");
+    }
+
+    window.addEventListener("mra-home-value", onHeroValue);
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        applyHeroAddress(stored);
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // private mode
+    }
+    return () => window.removeEventListener("mra-home-value", onHeroValue);
+  }, []);
 
   function revealResult(data: LookupSuccess, leadEmail?: string) {
     if (!isAdmin) {
@@ -136,7 +181,12 @@ export default function FreeValuationForm() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[color:var(--navy)] text-white">
+    <div
+      id={embedded ? "market-value" : undefined}
+      className={`relative bg-[color:var(--navy)] text-white ${
+        embedded ? "scroll-mt-28" : "min-h-screen"
+      }`}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-90"
@@ -146,10 +196,12 @@ export default function FreeValuationForm() {
         }}
       />
 
-      <section className="page-offset relative px-6 pb-8 lg:px-10">
+      <section
+        className={`${embedded ? "pt-8" : "page-offset"} relative px-6 pb-8 lg:px-10`}
+      >
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold tracking-[0.35em] text-[color:var(--gold)] uppercase">
-            Free valuation
+            Market value
           </p>
           <h1 className="mt-4 font-display text-5xl tracking-wide text-[color:var(--gold)] md:text-6xl">
             Market value
@@ -391,8 +443,8 @@ export default function FreeValuationForm() {
                   <p className="text-left text-[11px] leading-relaxed text-white/40">
                     {pending.attribution} This is the registered sold price, not
                     a formal RICS valuation or live asking-price estimate.
-                    Markets change — book a free local valuation for a current
-                    opinion of value.
+                    Markets change — speak to our team for a current opinion of
+                    value.
                   </p>
 
                   <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
