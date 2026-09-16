@@ -322,14 +322,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             if (next) {
               hadFirebaseUser.current = true;
-              await loadUserData(next, authEpoch.current);
+              const withRole = {
+                ...next,
+                isAdmin: sessionIsAdmin(next),
+              };
+              if (withRole.isAdmin) {
+                await attachStaffCookieFromToken();
+              }
+              await loadUserData(withRole, authEpoch.current);
               return;
             }
             const epoch = authEpoch.current;
+            // Cookie-only staff sessions cannot call Firestore APIs (no ID token).
+            // Prefer a real Firebase sign-in for /admin.
             const staff = await fetchStaffSession();
             if (epoch !== authEpoch.current) return;
             if (firebaseCurrentUserId()) return;
-            if (staff) {
+            if (staff && !hadFirebaseUser.current) {
+              // Keep cookie session only until the user signs in with Firebase.
               hadFirebaseUser.current = false;
               await loadUserData(staff, epoch);
               return;

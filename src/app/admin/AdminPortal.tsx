@@ -100,7 +100,7 @@ export function AdminPortal() {
     const idToken = await firebaseGetIdToken(true);
     if (!idToken) {
       throw new Error(
-        "Staff Firebase session expired. Sign out, then sign in again with mrahavenestates@gmail.com.",
+        "Staff Firebase session missing. Sign out, then sign in again at /login with mrahavenestates@gmail.com.",
       );
     }
     const res = await fetch("/api/admin/session", {
