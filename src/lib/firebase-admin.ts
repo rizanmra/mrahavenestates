@@ -1,9 +1,10 @@
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
-import { getAuth, type Auth } from "firebase-admin/auth";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import type { App } from "firebase-admin/app";
+import type { Auth } from "firebase-admin/auth";
+import type { Firestore } from "firebase-admin/firestore";
 
 let app: App | null = null;
 let db: Firestore | null = null;
+let loadFailed = false;
 
 function readServiceAccount() {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
@@ -38,6 +39,7 @@ function readServiceAccount() {
 
 function ensureAdminApp(): App | null {
   if (app) return app;
+  if (loadFailed) return null;
 
   const account = readServiceAccount();
   if (!account?.project_id || !account.client_email || !account.private_key) {
@@ -45,6 +47,11 @@ function ensureAdminApp(): App | null {
   }
 
   try {
+    // Lazy require so routes that never need Admin SDK still boot on Vercel.
+    // Static imports of firebase-admin were crashing /api/enquiry with empty 500s.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { cert, getApps, initializeApp } = require("firebase-admin/app") as typeof import("firebase-admin/app");
+
     if (!getApps().length) {
       app = initializeApp({
         credential: cert({
@@ -58,7 +65,9 @@ function ensureAdminApp(): App | null {
       app = getApps()[0]!;
     }
     return app;
-  } catch {
+  } catch (error) {
+    loadFailed = true;
+    console.error("[firebase-admin] init failed", error);
     return null;
   }
 }
@@ -68,13 +77,29 @@ export function getAdminFirestore(): Firestore | null {
   if (db) return db;
   const firebaseApp = ensureAdminApp();
   if (!firebaseApp) return null;
-  db = getFirestore(firebaseApp);
-  return db;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getFirestore } = require("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+    db = getFirestore(firebaseApp);
+    return db;
+  } catch (error) {
+    loadFailed = true;
+    console.error("[firebase-admin] firestore failed", error);
+    return null;
+  }
 }
 
 /** Server-only Admin Auth. Used to update the staff password in Firebase. */
 export function getAdminAuth(): Auth | null {
   const firebaseApp = ensureAdminApp();
   if (!firebaseApp) return null;
-  return getAuth(firebaseApp);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getAuth } = require("firebase-admin/auth") as typeof import("firebase-admin/auth");
+    return getAuth(firebaseApp);
+  } catch (error) {
+    loadFailed = true;
+    console.error("[firebase-admin] auth failed", error);
+    return null;
+  }
 }

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { isReservedStaffEmail } from "@/lib/admin";
 import {
-  getAssignedAdmin,
-  newPropertyEnquiryId,
-  savePropertyEnquiry,
-} from "@/lib/admin-server";
+  newEnquiryId,
+  readAssignedAdminEmail,
+  savePublicEnquiry,
+} from "@/lib/enquiry-inbox";
 import { getContactReason, isContactReasonId } from "@/data/contact-reasons";
 import {
   formatPhoneForStorage,
@@ -323,10 +323,10 @@ export async function POST(request: Request) {
 
     const cleanName = name.trim().replace(/\s+/g, " ");
     const cleanEmail = email.trim().toLowerCase();
-    const assignedAdmin = await getAssignedAdmin();
+    const assignedAdminEmail = await readAssignedAdminEmail();
     if (
       isReservedStaffEmail(cleanEmail) ||
-      (assignedAdmin && assignedAdmin.email === cleanEmail)
+      (assignedAdminEmail && assignedAdminEmail === cleanEmail)
     ) {
       return NextResponse.json(
         {
@@ -355,7 +355,7 @@ export async function POST(request: Request) {
 
     try {
       const enquiry = {
-        id: newPropertyEnquiryId(),
+        id: newEnquiryId(),
         name: cleanName,
         email: cleanEmail,
         phone: cleanPhone,
@@ -366,7 +366,7 @@ export async function POST(request: Request) {
         read: false,
         status: "open" as const,
       };
-      await savePropertyEnquiry(enquiry);
+      await savePublicEnquiry(enquiry);
 
       const to = inboxAddress();
       const payload: DeliveryInput = {
