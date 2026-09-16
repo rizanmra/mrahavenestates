@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { isReservedStaffEmail } from "@/lib/admin";
 import {
   getAssignedAdmin,
@@ -13,6 +12,9 @@ import {
   validateName,
   validatePhone,
 } from "@/lib/form-validation";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export type EnquiryPayload = {
   name: string;
@@ -102,6 +104,7 @@ async function deliverViaSmtp(input: DeliveryInput) {
   const host = process.env.CONTACT_SMTP_HOST?.trim() || "smtp.gmail.com";
   const port = Number(process.env.CONTACT_SMTP_PORT || "465");
 
+  const nodemailer = await import("nodemailer");
   const transporter = nodemailer.createTransport({
     host,
     port,

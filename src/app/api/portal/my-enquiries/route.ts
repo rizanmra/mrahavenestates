@@ -5,6 +5,9 @@ import {
 } from "@/lib/admin-server";
 import { inboxToPortalEnquiry } from "@/lib/enquiry-bridge";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 /** Inbox rows for the signed-in client — including guest submissions later claimed by email. */
 export async function GET(request: Request) {
   const header = request.headers.get("authorization") || "";

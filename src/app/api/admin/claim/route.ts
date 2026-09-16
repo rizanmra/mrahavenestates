@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { claimOrGetAdmin, lookupFirebaseUser } from "@/lib/admin-server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";

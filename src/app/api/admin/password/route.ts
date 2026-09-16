@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAdminFromRequest } from "@/lib/admin-server";
 import { changeStaffPassword } from "@/lib/staff-password";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const auth = await requireAdminFromRequest(request);
   if (!auth.ok) {

@@ -5,6 +5,9 @@ import {
 } from "@/lib/admin-server";
 import { listClientEnquiryStatusUpdates } from "@/lib/client-enquiry-updates";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 /**
  * Soft client sync for staff reply/close status (local demo + fallback).
  * Only returns updates for the authenticated user — never for an arbitrary email.

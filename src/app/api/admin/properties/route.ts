@@ -10,6 +10,9 @@ import type { PropertyInput } from "@/lib/listings-store";
 import { purgePropertyFromAllUsers } from "@/lib/purge-property-saves";
 import type { PropertyStatus, PropertyType } from "@/data/properties";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function listingKind(value: unknown): {
   type: PropertyType;
   status: PropertyStatus;

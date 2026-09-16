@@ -93,11 +93,22 @@ export default function ContactForm() {
           allowMissingPhone: loggedIn,
         }),
       });
-      const data = (await res.json()) as {
+      const raw = await res.text();
+      let data: {
         ok?: boolean;
         error?: string;
         enquiry?: { id?: string };
-      };
+      } = {};
+      try {
+        data = raw ? (JSON.parse(raw) as typeof data) : {};
+      } catch {
+        setError(
+          res.status >= 500
+            ? "The enquiry service is temporarily unavailable. Please call us or try again shortly."
+            : "Could not send your message. Please try again.",
+        );
+        return;
+      }
       if (!res.ok || !data.ok) {
         setError(data.error || "Could not send your message. Please try again.");
         return;

@@ -12,6 +12,9 @@ import {
   verifyStaffSessionToken,
 } from "@/lib/admin-session";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function staffProfile(email: string, userId: string) {
   return {
     ok: true as const,
