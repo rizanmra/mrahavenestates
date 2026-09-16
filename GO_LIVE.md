@@ -18,7 +18,13 @@ Use this when creating the client's **Vercel** and **Firebase** accounts in the 
 5. [Vercel](https://vercel.com) → Sign up with same email → Import GitHub repo
 6. Invite you as collaborator on Vercel + GitHub if needed
 
-### Firestore rules (paste in Firebase)
+### Firestore rules (paste in Firebase → Firestore → Rules → Publish)
+
+Use the exact rules below. After any change, click **Publish**.
+
+If the admin inbox stays empty after a successful enquiry, the usual cause is
+old rules that blocked create/read — republish these rules, then ask the client
+to refresh `/admin`.
 
 ```
 rules_version = '2';
@@ -54,6 +60,7 @@ service cloud.firestore {
 ### Firebase Auth
 
 - Authentication → Sign-in method → **Email/Password** → Enable
+- Staff login email: `mrahavenestates@gmail.com` (reset password from Firebase if needed)
 
 ## 2. Add env vars on Vercel
 

@@ -177,7 +177,7 @@ async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boole
   }
 }
 
-/** Persist an enquiry for the staff inbox. Never throws. */
+/** Persist an enquiry for the staff inbox. Throws if cloud write fails. */
 export async function savePublicEnquiry(
   record: PropertyEnquiryRecord,
 ): Promise<void> {
@@ -198,10 +198,19 @@ export async function savePublicEnquiry(
 
   const cloudOk = await saveToFirestoreRest(record);
   if (!cloudOk) {
-    console.warn("[enquiry-inbox] cloud write failed — inbox may be empty on other instances");
+    // Best-effort sync through the full admin writer when Admin SDK is healthy.
+    try {
+      const admin = await import("@/lib/admin-server");
+      await admin.savePropertyEnquiry(record);
+      return;
+    } catch (error) {
+      console.warn("[enquiry-inbox] admin-server sync skipped", error);
+    }
+    throw new Error(
+      "Could not save your enquiry to the staff inbox. Please try again.",
+    );
   }
 
-  // Best-effort sync through the full admin writer when Admin SDK is healthy.
   try {
     const admin = await import("@/lib/admin-server");
     await admin.savePropertyEnquiry(record);
