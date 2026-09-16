@@ -54,6 +54,19 @@ export async function POST(request: Request) {
     );
   }
 
+  if (isReservedStaffEmail(user.email)) {
+    const token = createStaffSessionToken(user.email);
+    if (!token) {
+      return NextResponse.json(
+        { ok: false, error: "Staff session could not be created." },
+        { status: 503 },
+      );
+    }
+    const res = NextResponse.json(staffProfile(user.email, user.userId));
+    res.headers.set("Set-Cookie", staffCookieHeader(token));
+    return res;
+  }
+
   const claimed = await claimOrGetAdmin(user, idToken);
   if (!claimed.isAdmin) {
     return NextResponse.json(

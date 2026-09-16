@@ -90,9 +90,29 @@ export function AdminPortal() {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const token = await firebaseGetIdToken();
+    // Force-refresh so staff API calls never send a stale/empty token.
+    const token = await firebaseGetIdToken(true);
     if (token) headers.Authorization = `Bearer ${token}`;
     return headers;
+  }, []);
+
+  const ensureStaffSession = useCallback(async () => {
+    const idToken = await firebaseGetIdToken(true);
+    if (!idToken) {
+      throw new Error(
+        "Staff Firebase session expired. Sign out, then sign in again with mrahavenestates@gmail.com.",
+      );
+    }
+    const res = await fetch("/api/admin/session", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Could not create staff session.");
+    }
   }, []);
 
   const loadEnquiries = useCallback(async () => {
@@ -133,6 +153,7 @@ export function AdminPortal() {
     setError("");
     setLoading(true);
     try {
+      await ensureStaffSession();
       await Promise.all([loadEnquiries(), loadListings()]);
     } catch (err) {
       setError(
@@ -141,7 +162,7 @@ export function AdminPortal() {
     } finally {
       setLoading(false);
     }
-  }, [loadEnquiries, loadListings]);
+  }, [ensureStaffSession, loadEnquiries, loadListings]);
 
   useEffect(() => {
     if (!ready) return;

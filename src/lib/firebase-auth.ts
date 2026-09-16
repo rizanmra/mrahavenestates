@@ -287,11 +287,13 @@ export async function firebaseRegister(input: {
   }
 }
 
-export async function firebaseGetIdToken(): Promise<string | null> {
+export async function firebaseGetIdToken(
+  forceRefresh = false,
+): Promise<string | null> {
   const auth = getFirebaseAuth();
   const user = auth?.currentUser;
   if (!user) return null;
-  return user.getIdToken();
+  return user.getIdToken(forceRefresh);
 }
 
 export async function firebaseCreatePropertyEnquiry(

@@ -242,38 +242,61 @@ export async function requireAdminFromRequest(
 > {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  const assigned = await getAssignedAdmin(token || undefined);
 
-  const cookieEmail = verifyStaffSessionToken(readStaffSessionCookie(request) || "");
+  // Firebase ID token is the source of truth on Vercel (no shared /tmp, no Admin SDK).
+  if (token) {
+    const user = await lookupFirebaseUser(token);
+    if (user) {
+      if (isReservedStaffEmail(user.email)) {
+        return { ok: true, email: user.email, idToken: token };
+      }
+      const claimed = await claimOrGetAdmin(user, token);
+      if (claimed.isAdmin) {
+        return { ok: true, email: user.email, idToken: token };
+      }
+      return { ok: false, status: 403, error: "Admin access only." };
+    }
+  }
+
+  const cookieEmail = verifyStaffSessionToken(
+    readStaffSessionCookie(request) || "",
+  );
+  if (cookieEmail && isReservedStaffEmail(cookieEmail)) {
+    return { ok: true, email: cookieEmail, idToken: token || undefined };
+  }
+
+  const assigned = await getAssignedAdmin(token || undefined);
   if (
     cookieEmail &&
-    (isReservedStaffEmail(cookieEmail) ||
-      (assigned && cookieEmail === assigned.email))
+    assigned &&
+    cookieEmail === assigned.email
   ) {
     return { ok: true, email: cookieEmail, idToken: token || undefined };
   }
 
   if (!token) {
-    return { ok: false, status: 401, error: "Sign in as an admin to continue." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Sign in as an admin to continue.",
+    };
   }
 
-  const user = await lookupFirebaseUser(token);
-  if (!user) {
-    return { ok: false, status: 401, error: "Sign in as an admin to continue." };
-  }
-
-  const claimed = await claimOrGetAdmin(user, token);
-  if (!claimed.isAdmin) {
-    return { ok: false, status: 403, error: "Admin access only." };
-  }
-  return { ok: true, email: user.email, idToken: token };
+  return {
+    ok: false,
+    status: 401,
+    error: "Sign in as an admin to continue.",
+  };
 }
 
 async function staffIdToken(): Promise<string | null> {
   const apiKey = firebaseApiKey();
   const password = process.env.ADMIN_PASSWORD?.trim();
   const assigned = await getAssignedAdmin();
-  const email = assigned?.email;
+  const email =
+    assigned?.email ||
+    process.env.ADMIN_EMAIL?.trim().toLowerCase() ||
+    "mrahavenestates@gmail.com";
   if (!apiKey || !password || !email) return null;
 
   if (staffToken && Date.now() < staffToken.expiresAt - 60_000) {
