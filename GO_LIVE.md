@@ -40,9 +40,12 @@ service cloud.firestore {
     }
 
     match /propertyEnquiries/{enquiryId} {
-      // Public can submit; only staff can read the full inbox.
+      // Public can submit; staff sees full inbox; clients see their own rows.
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin()
+        || (request.auth != null
+            && request.auth.token.email == resource.data.email);
+      allow update, delete: if isAdmin();
     }
   }
 }

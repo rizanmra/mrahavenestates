@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
   const [fileUpdates, inboxUpdates] = await Promise.all([
     listClientEnquiryStatusUpdates(email),
-    listInboxStatusUpdatesForEmail(email),
+    listInboxStatusUpdatesForEmail(email, token || null),
   ]);
   const merged = new Map<
     string,

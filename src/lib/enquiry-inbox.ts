@@ -9,6 +9,9 @@ import {
 /**
  * Lightweight inbox writer for public /api/enquiry.
  * Intentionally avoids firebase-admin — that SDK was crashing Vercel route boots.
+ *
+ * Persistence: Firestore REST create (rules allow unauthenticated create).
+ * Local memory/file are best-effort only and do not survive across Vercel instances.
  */
 
 const COLLECTION = "propertyEnquiries";
@@ -63,6 +66,7 @@ function toFirestoreDocument(record: PropertyEnquiryRecord) {
       message: { stringValue: record.message },
       createdAt: { integerValue: String(record.createdAt) },
       read: { booleanValue: record.read },
+      status: { stringValue: record.status || "open" },
       payload: { stringValue: JSON.stringify(record) },
     },
   };
@@ -107,45 +111,69 @@ async function staffIdToken(): Promise<string | null> {
   }
 }
 
-async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<void> {
+/**
+ * Public rules allow create only — never PATCH first without auth.
+ * Create with POST (+ API key). If the doc already exists, PATCH with staff token.
+ */
+async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boolean> {
   const projectId = firebaseProjectId();
   const apiKey = firebaseApiKey();
-  if (!projectId || !apiKey) return;
+  if (!projectId || !apiKey) return false;
 
-  const token = await staffIdToken();
   const key = encodeURIComponent(apiKey);
   const createPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${key}`;
   const patchPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}/${encodeURIComponent(record.id)}?key=${key}`;
   const body = JSON.stringify(toFirestoreDocument(record));
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
 
-  try {
-    let res = await fetch(patchPath, {
-      method: "PATCH",
+  const send = async (
+    url: string,
+    method: "POST" | "PATCH",
+    token: string | null,
+  ) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch(url, {
+      method,
       headers,
       body,
       signal: AbortSignal.timeout(12000),
     });
-    if (res.status === 404) {
-      res = await fetch(createPath, {
-        method: "POST",
-        headers,
-        body,
-        signal: AbortSignal.timeout(12000),
-      });
-    }
-    if (!res.ok) {
+  };
+
+  try {
+    // Unauthenticated create — matches `allow create: if true`
+    let res = await send(createPath, "POST", null);
+    if (res.ok) return true;
+
+    const createStatus = res.status;
+    const createText = await res.text();
+
+    // Already exists (or create denied) — try authenticated update
+    const token = await staffIdToken();
+    if (token) {
+      res = await send(patchPath, "PATCH", token);
+      if (res.ok) return true;
+      res = await send(createPath, "POST", token);
+      if (res.ok) return true;
       console.warn(
         "[enquiry-inbox] firestore rest",
         res.status,
         await res.text(),
       );
+      return false;
     }
+
+    console.warn(
+      "[enquiry-inbox] firestore rest create failed",
+      createStatus,
+      createText,
+    );
+    return false;
   } catch (error) {
     console.warn("[enquiry-inbox] firestore rest skipped", error);
+    return false;
   }
 }
 
@@ -168,7 +196,10 @@ export async function savePublicEnquiry(
     console.warn("[enquiry-inbox] local write skipped", error);
   }
 
-  await saveToFirestoreRest(record);
+  const cloudOk = await saveToFirestoreRest(record);
+  if (!cloudOk) {
+    console.warn("[enquiry-inbox] cloud write failed — inbox may be empty on other instances");
+  }
 
   // Best-effort sync through the full admin writer when Admin SDK is healthy.
   try {

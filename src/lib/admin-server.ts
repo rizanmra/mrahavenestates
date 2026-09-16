@@ -236,7 +236,10 @@ export async function claimOrGetAdmin(
 
 export async function requireAdminFromRequest(
   request: Request,
-): Promise<{ ok: true; email: string } | { ok: false; status: number; error: string }> {
+): Promise<
+  | { ok: true; email: string; idToken?: string }
+  | { ok: false; status: number; error: string }
+> {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   const assigned = await getAssignedAdmin(token || undefined);
@@ -247,7 +250,7 @@ export async function requireAdminFromRequest(
     (isReservedStaffEmail(cookieEmail) ||
       (assigned && cookieEmail === assigned.email))
   ) {
-    return { ok: true, email: cookieEmail };
+    return { ok: true, email: cookieEmail, idToken: token || undefined };
   }
 
   if (!token) {
@@ -263,7 +266,7 @@ export async function requireAdminFromRequest(
   if (!claimed.isAdmin) {
     return { ok: false, status: 403, error: "Admin access only." };
   }
-  return { ok: true, email: user.email };
+  return { ok: true, email: user.email, idToken: token };
 }
 
 async function staffIdToken(): Promise<string | null> {
@@ -338,6 +341,7 @@ function toFirestoreDocument(record: PropertyEnquiryRecord) {
       message: firestoreString(record.message),
       createdAt: { integerValue: String(record.createdAt) },
       read: { booleanValue: record.read },
+      status: firestoreString(record.status || "open"),
       payload: firestoreString(JSON.stringify(record)),
     },
   };
@@ -367,6 +371,8 @@ function fromFirestoreDocument(doc: {
     message: fields.message?.stringValue || "",
     createdAt: Number(fields.createdAt?.integerValue || Date.now()),
     read: Boolean(fields.read?.booleanValue),
+    status:
+      fields.status?.stringValue === "answered" ? "answered" : "open",
     property: {
       slug: "",
       title: "",
@@ -382,6 +388,28 @@ function fromFirestoreDocument(doc: {
   return isPropertyEnquiryRecord(fallback) ? fallback : null;
 }
 
+function recordFromCloudData(
+  data: Record<string, unknown>,
+): PropertyEnquiryRecord | null {
+  if (isPropertyEnquiryRecord(data)) return data;
+  if (typeof data.payload === "string") {
+    try {
+      const parsed = JSON.parse(data.payload) as unknown;
+      if (isPropertyEnquiryRecord(parsed)) return parsed;
+    } catch {
+      // fall through
+    }
+  }
+  return null;
+}
+
+async function resolveFirestoreToken(
+  idToken?: string | null,
+): Promise<string | null> {
+  if (idToken?.trim()) return idToken.trim();
+  return staffIdToken();
+}
+
 async function saveToAdminSdk(record: PropertyEnquiryRecord): Promise<boolean> {
   const db = getAdminFirestore();
   if (!db) return false;
@@ -392,21 +420,29 @@ async function saveToAdminSdk(record: PropertyEnquiryRecord): Promise<boolean> {
   return true;
 }
 
-async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boolean> {
+async function saveToFirestoreRest(
+  record: PropertyEnquiryRecord,
+  idToken?: string | null,
+): Promise<boolean> {
   const projectId = firebaseProjectId();
-  if (!projectId) return false;
-  const token = await staffIdToken();
-  const key = encodeURIComponent(firebaseApiKey());
+  const apiKey = firebaseApiKey();
+  if (!projectId || !apiKey) return false;
+  const token = await resolveFirestoreToken(idToken);
+  const key = encodeURIComponent(apiKey);
   const docPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}/${encodeURIComponent(record.id)}?key=${key}`;
   const createPath = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?documentId=${encodeURIComponent(record.id)}&key=${key}`;
   const body = JSON.stringify(toFirestoreDocument(record));
 
-  const send = async (url: string, method: "PATCH" | "POST", withAuth: boolean) => {
+  const send = async (
+    url: string,
+    method: "PATCH" | "POST",
+    authToken: string | null,
+  ) => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (withAuth && token) {
-      headers.Authorization = `Bearer ${token}`;
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
     }
     return fetch(url, {
       method,
@@ -416,22 +452,20 @@ async function saveToFirestoreRest(record: PropertyEnquiryRecord): Promise<boole
     });
   };
 
-  let res = await send(docPath, "PATCH", Boolean(token));
-  if (res.status === 404) {
-    res = await send(createPath, "POST", Boolean(token));
+  // Public create first (rules: allow create if true). Auth only needed for updates.
+  let res = await send(createPath, "POST", null);
+  if (res.ok) return true;
+
+  if (token) {
+    res = await send(docPath, "PATCH", token);
+    if (res.ok) return true;
+    res = await send(createPath, "POST", token);
+    if (res.ok) return true;
   }
-  if (!res.ok && token && (res.status === 401 || res.status === 403)) {
-    res = await send(docPath, "PATCH", true);
-    if (res.status === 404) {
-      res = await send(createPath, "POST", true);
-    }
-  }
-  if (!res.ok) {
-    const text = await res.text();
-    console.warn("[admin] firestore rest write failed", res.status, text);
-    return false;
-  }
-  return true;
+
+  const text = await res.text();
+  console.warn("[admin] firestore rest write failed", res.status, text);
+  return false;
 }
 
 async function listFromAdminSdk(): Promise<PropertyEnquiryRecord[]> {
@@ -439,29 +473,111 @@ async function listFromAdminSdk(): Promise<PropertyEnquiryRecord[]> {
   if (!db) return [];
   const snap = await db.collection(COLLECTION).orderBy("createdAt", "desc").get();
   return snap.docs
-    .map((doc) => doc.data())
-    .filter(isPropertyEnquiryRecord);
+    .map((doc) => recordFromCloudData(doc.data() as Record<string, unknown>))
+    .filter((item): item is PropertyEnquiryRecord => Boolean(item));
 }
 
-async function listFromFirestoreRest(): Promise<PropertyEnquiryRecord[]> {
+async function listFromFirestoreRest(
+  idToken?: string | null,
+  emailFilter?: string | null,
+): Promise<PropertyEnquiryRecord[]> {
   const projectId = firebaseProjectId();
-  const token = await staffIdToken();
+  const token = await resolveFirestoreToken(idToken);
   if (!projectId || !token) return [];
 
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?key=${encodeURIComponent(firebaseApiKey())}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(15000),
-    },
-  );
-  if (!res.ok) return [];
-  const data = (await res.json()) as {
-    documents?: { name?: string; fields?: Record<string, { stringValue?: string; integerValue?: string; booleanValue?: boolean }> }[];
+  const key = encodeURIComponent(firebaseApiKey());
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   };
-  return (data.documents || [])
-    .map(fromFirestoreDocument)
-    .filter((item): item is PropertyEnquiryRecord => Boolean(item));
+
+  try {
+    if (emailFilter?.trim()) {
+      const res = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${key}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: COLLECTION }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: "email" },
+                  op: "EQUAL",
+                  value: { stringValue: emailFilter.trim().toLowerCase() },
+                },
+              },
+              orderBy: [
+                { field: { fieldPath: "createdAt" }, direction: "DESCENDING" },
+              ],
+              limit: 100,
+            },
+          }),
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      if (!res.ok) {
+        console.warn(
+          "[admin] firestore rest query failed",
+          res.status,
+          await res.text(),
+        );
+        return [];
+      }
+      const rows = (await res.json()) as Array<{
+        document?: {
+          name?: string;
+          fields?: Record<
+            string,
+            {
+              stringValue?: string;
+              integerValue?: string;
+              booleanValue?: boolean;
+            }
+          >;
+        };
+      }>;
+      return rows
+        .map((row) => (row.document ? fromFirestoreDocument(row.document) : null))
+        .filter((item): item is PropertyEnquiryRecord => Boolean(item));
+    }
+
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${COLLECTION}?key=${key}&pageSize=300`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    if (!res.ok) {
+      console.warn(
+        "[admin] firestore rest list failed",
+        res.status,
+        await res.text(),
+      );
+      return [];
+    }
+    const data = (await res.json()) as {
+      documents?: {
+        name?: string;
+        fields?: Record<
+          string,
+          {
+            stringValue?: string;
+            integerValue?: string;
+            booleanValue?: boolean;
+          }
+        >;
+      }[];
+    };
+    return (data.documents || [])
+      .map(fromFirestoreDocument)
+      .filter((item): item is PropertyEnquiryRecord => Boolean(item));
+  } catch (error) {
+    console.warn("[admin] firestore rest list skipped", error);
+    return [];
+  }
 }
 
 function enquiryRank(item: PropertyEnquiryRecord) {
@@ -487,15 +603,29 @@ function mergeRecords(groups: PropertyEnquiryRecord[][]) {
 
 export async function listInboxRowsForEmail(
   email: string,
+  idToken?: string | null,
 ): Promise<PropertyEnquiryRecord[]> {
   const needle = email.trim().toLowerCase();
   if (!needle) return [];
-  const records = await listPropertyEnquiries();
-  return records.filter((item) => item.email.trim().toLowerCase() === needle);
+  const file = await readFileStore();
+  let cloud: PropertyEnquiryRecord[] = [];
+  try {
+    const viaSdk = await listFromAdminSdk();
+    const viaRest = await listFromFirestoreRest(idToken, needle);
+    cloud = mergeRecords([viaSdk, viaRest]);
+  } catch (error) {
+    console.warn("[admin] client inbox read skipped", error);
+  }
+  return mergeRecords([memoryInbox, file, cloud]).filter(
+    (item) => item.email.trim().toLowerCase() === needle,
+  );
 }
 
-export async function listInboxStatusUpdatesForEmail(email: string) {
-  const rows = await listInboxRowsForEmail(email);
+export async function listInboxStatusUpdatesForEmail(
+  email: string,
+  idToken?: string | null,
+) {
+  const rows = await listInboxRowsForEmail(email, idToken);
   return rows
     .filter((item) => item.reply || item.status === "answered")
     .map((item) => ({
@@ -508,6 +638,7 @@ export async function listInboxStatusUpdatesForEmail(email: string) {
 
 export async function savePropertyEnquiry(
   record: PropertyEnquiryRecord,
+  options?: { idToken?: string | null },
 ): Promise<void> {
   memoryInbox = [
     record,
@@ -526,18 +657,21 @@ export async function savePropertyEnquiry(
 
   try {
     const viaSdk = await saveToAdminSdk(record);
-    if (!viaSdk) await saveToFirestoreRest(record);
+    if (!viaSdk) await saveToFirestoreRest(record, options?.idToken);
   } catch (error) {
     console.warn("[admin] cloud inbox write skipped", error);
   }
 }
 
-export async function listPropertyEnquiries(): Promise<PropertyEnquiryRecord[]> {
+export async function listPropertyEnquiries(options?: {
+  idToken?: string | null;
+}): Promise<PropertyEnquiryRecord[]> {
   const file = await readFileStore();
   let cloud: PropertyEnquiryRecord[] = [];
   try {
     cloud = await listFromAdminSdk();
-    if (cloud.length === 0) cloud = await listFromFirestoreRest();
+    const viaRest = await listFromFirestoreRest(options?.idToken);
+    cloud = mergeRecords([cloud, viaRest]);
   } catch (error) {
     console.warn("[admin] cloud inbox read skipped", error);
   }
@@ -547,12 +681,13 @@ export async function listPropertyEnquiries(): Promise<PropertyEnquiryRecord[]> 
 export async function markPropertyEnquiryRead(
   id: string,
   read: boolean,
+  options?: { idToken?: string | null },
 ): Promise<PropertyEnquiryRecord | null> {
-  const records = await listPropertyEnquiries();
+  const records = await listPropertyEnquiries(options);
   const current = records.find((item) => item.id === id);
   if (!current) return null;
   const next = { ...current, read };
-  await savePropertyEnquiry(next);
+  await savePropertyEnquiry(next, options);
   return next;
 }
 
@@ -654,13 +789,15 @@ export async function replyToPropertyEnquiry(input: {
   id: string;
   reply: string;
   repliedBy: string;
+  idToken?: string | null;
 }): Promise<PropertyEnquiryRecord> {
   const reply = input.reply.trim();
   if (!reply) {
     throw new Error("Please enter a reply.");
   }
 
-  const records = await listPropertyEnquiries();
+  const options = { idToken: input.idToken };
+  const records = await listPropertyEnquiries(options);
   const current = records.find((item) => item.id === input.id);
   if (!current) {
     throw new Error("Enquiry not found.");
@@ -675,7 +812,7 @@ export async function replyToPropertyEnquiry(input: {
     repliedAt,
     repliedBy: input.repliedBy,
   };
-  await savePropertyEnquiry(next);
+  await savePropertyEnquiry(next, options);
 
   try {
     await markClientEnquiryStatus({
@@ -711,9 +848,12 @@ async function deleteFromAdminSdk(id: string): Promise<boolean> {
   return true;
 }
 
-async function deleteFromFirestoreRest(id: string): Promise<boolean> {
+async function deleteFromFirestoreRest(
+  id: string,
+  idToken?: string | null,
+): Promise<boolean> {
   const projectId = firebaseProjectId();
-  const token = await staffIdToken();
+  const token = await resolveFirestoreToken(idToken);
   if (!projectId || !token) return false;
 
   const res = await fetch(
@@ -731,8 +871,10 @@ async function deleteFromFirestoreRest(id: string): Promise<boolean> {
 export async function deletePropertyEnquiry(input: {
   id: string;
   closedBy: string;
+  idToken?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const records = await listPropertyEnquiries();
+  const options = { idToken: input.idToken };
+  const records = await listPropertyEnquiries(options);
   const current = records.find((item) => item.id === input.id);
   if (!current) {
     return { ok: false, error: "Enquiry not found." };
@@ -755,12 +897,17 @@ export async function deletePropertyEnquiry(input: {
     console.warn("[admin] client enquiry close skipped", error);
   }
 
+  memoryInbox = memoryInbox.filter((item) => item.id !== input.id);
   const remaining = records.filter((item) => item.id !== input.id);
-  await writeFileStore(remaining);
+  try {
+    await writeFileStore(remaining);
+  } catch (error) {
+    console.warn("[admin] local inbox delete skipped", error);
+  }
 
   try {
     const viaSdk = await deleteFromAdminSdk(input.id);
-    if (!viaSdk) await deleteFromFirestoreRest(input.id);
+    if (!viaSdk) await deleteFromFirestoreRest(input.id, input.idToken);
   } catch (error) {
     console.warn("[admin] cloud inbox delete skipped", error);
   }

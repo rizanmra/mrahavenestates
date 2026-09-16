@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const enquiries = await listPropertyEnquiries();
+  const enquiries = await listPropertyEnquiries({ idToken: auth.idToken });
   return NextResponse.json({ ok: true, enquiries });
 }
 
@@ -39,12 +39,15 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const options = { idToken: auth.idToken };
+
   if (typeof body.reply === "string") {
     try {
       const enquiry = await replyToPropertyEnquiry({
         id,
         reply: body.reply,
         repliedBy: auth.email,
+        idToken: auth.idToken,
       });
       return NextResponse.json({ ok: true, enquiry });
     } catch (error) {
@@ -61,7 +64,11 @@ export async function PATCH(request: Request) {
     }
   }
 
-  const enquiry = await markPropertyEnquiryRead(id, body.read !== false);
+  const enquiry = await markPropertyEnquiryRead(
+    id,
+    body.read !== false,
+    options,
+  );
   if (!enquiry) {
     return NextResponse.json(
       { ok: false, error: "Enquiry not found." },
@@ -90,6 +97,7 @@ export async function DELETE(request: Request) {
   const result = await deletePropertyEnquiry({
     id,
     closedBy: auth.email,
+    idToken: auth.idToken,
   });
   if (!result.ok) {
     return NextResponse.json(

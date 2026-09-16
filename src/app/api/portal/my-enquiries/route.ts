@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const rows = await listInboxRowsForEmail(user.email);
+  const rows = await listInboxRowsForEmail(user.email, token);
   return NextResponse.json({
     ok: true,
     enquiries: rows.map((item) => inboxToPortalEnquiry(item, user.userId)),
