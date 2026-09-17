@@ -32,7 +32,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == 'mrahavenestates@gmail.com';
+        && (
+          request.auth.token.email == 'mrahavenestates@gmail.com'
+          || (
+            exists(/databases/$(database)/documents/config/admin)
+            && get(/databases/$(database)/documents/config/admin).data.email
+              == request.auth.token.email
+          )
+        );
     }
 
     match /users/{userId} {
@@ -41,8 +48,12 @@ service cloud.firestore {
 
     match /config/admin {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && !exists(/databases/$(database)/documents/config/admin);
+      allow write: if false;
+    }
+
+    match /properties/{slug} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     match /propertyEnquiries/{enquiryId} {

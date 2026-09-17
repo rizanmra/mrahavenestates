@@ -27,7 +27,6 @@ import {
 } from "@/lib/firebase-auth";
 import { sessionIsAdmin } from "@/lib/admin";
 import { mergePortalEnquiryLists } from "@/lib/enquiry-bridge";
-import { filterAvailablePropertySlugs } from "@/data/properties";
 import {
   addEnquiry,
   applyEnquiryStatusUpdates,
@@ -44,6 +43,18 @@ import {
   type PortalEnquiry,
   type PortalSession,
 } from "@/lib/portal";
+
+async function fetchLivePropertySlugs(): Promise<string[]> {
+  try {
+    const res = await fetch("/api/properties");
+    const data = (await res.json()) as { properties?: { slug: string }[] };
+    return Array.isArray(data.properties)
+      ? data.properties.map((item) => item.slug)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 async function fetchStaffSession(): Promise<PortalSession | null> {
   try {
@@ -236,14 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const [saved, rawEnquiries, live] = await Promise.all([
             firebaseGetSavedSlugs(enriched.userId),
             firebaseGetEnquiries(enriched.userId),
-            fetch("/api/properties")
-              .then((res) => res.json())
-              .then((data: { properties?: { slug: string }[] }) =>
-                Array.isArray(data.properties)
-                  ? data.properties.map((item) => item.slug)
-                  : [],
-              )
-              .catch(() => [] as string[]),
+            fetchLivePropertySlugs(),
           ]);
           if (epoch !== undefined && epoch !== authEpoch.current) return;
           const enquiryList = filterOwnEnquiries(
@@ -256,10 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchInboxMirror(),
           ]);
           const liveSet = new Set(live);
+          // Only prune against the live DB catalogue — never the static website seed.
           setSavedSlugs(
-            live.length
-              ? saved.filter((slug) => liveSet.has(slug))
-              : filterAvailablePropertySlugs(saved),
+            live.length ? saved.filter((slug) => liveSet.has(slug)) : saved,
           );
           setEnquiries(
             mergePortalEnquiryLists(
@@ -277,19 +280,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(next);
       const saved = getSavedSlugs(next.userId).map((item) => item.slug);
       try {
-        const res = await fetch("/api/properties");
-        const data = (await res.json()) as { properties?: { slug: string }[] };
-        const live = Array.isArray(data.properties)
-          ? data.properties.map((item) => item.slug)
-          : [];
+        const live = await fetchLivePropertySlugs();
         const liveSet = new Set(live);
         setSavedSlugs(
-          live.length
-            ? saved.filter((slug) => liveSet.has(slug))
-            : filterAvailablePropertySlugs(saved),
+          live.length ? saved.filter((slug) => liveSet.has(slug)) : saved,
         );
       } catch {
-        setSavedSlugs(filterAvailablePropertySlugs(saved));
+        setSavedSlugs(saved);
       }
       const own = filterOwnEnquiries(
         next.userId,

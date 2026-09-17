@@ -2,14 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { extractPostcode } from "@/lib/land-registry";
 
 type SearchMode = "rent" | "value";
 
-const STORAGE_KEY = "mra-home-value-address";
-
 const placeholders: Record<SearchMode, string> = {
   rent: "Enter a place, address or postcode",
-  value: "Want to know your home's value? Enter your address…",
+  value: "Enter a postcode to estimate value…",
 };
 
 export function HeroSearchPanel() {
@@ -17,23 +16,20 @@ export function HeroSearchPanel() {
   const [mode, setMode] = useState<SearchMode>("rent");
   const [location, setLocation] = useState("");
 
-  function openMarketValue(address: string) {
+  function openValueCalculator(address: string) {
     const trimmed = address.trim();
-    try {
-      if (trimmed) {
-        sessionStorage.setItem(STORAGE_KEY, trimmed);
-      } else {
-        sessionStorage.removeItem(STORAGE_KEY);
+    const postcode = extractPostcode(trimmed);
+    const href = postcode
+      ? `/property-value-calculator?postcode=${encodeURIComponent(postcode)}`
+      : "/property-value-calculator";
+    if (trimmed && typeof document !== "undefined") {
+      const homeSection = document.getElementById("property-value-calculator");
+      if (homeSection && !postcode) {
+        homeSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
       }
-    } catch {
-      // private mode
     }
-    window.dispatchEvent(
-      new CustomEvent("mra-home-value", { detail: { address: trimmed } }),
-    );
-    document
-      .getElementById("market-value")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    router.push(href);
   }
 
   function goRent() {
@@ -47,7 +43,7 @@ export function HeroSearchPanel() {
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mode === "value") {
-      openMarketValue(location);
+      openValueCalculator(location);
       return;
     }
     goRent();
@@ -57,7 +53,7 @@ export function HeroSearchPanel() {
     <div className="mx-auto w-full max-w-3xl">
       {mode === "value" ? (
         <p className="home-value-prompt mb-3 text-center text-sm tracking-wide text-[color:var(--gold)] md:text-base">
-          Land Registry sold price — nationwide across the UK
+          Land Registry £/m² estimate — nationwide across the UK
         </p>
       ) : null}
 
@@ -69,7 +65,7 @@ export function HeroSearchPanel() {
           <label className="min-w-0 flex-1">
             <span className="sr-only">
               {mode === "value"
-                ? "Enter your property address"
+                ? "Enter a postcode for a value estimate"
                 : "Enter a place or postcode"}
             </span>
             <input
@@ -77,7 +73,7 @@ export function HeroSearchPanel() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder={placeholders[mode]}
-              autoComplete={mode === "value" ? "street-address" : "address-level2"}
+              autoComplete={mode === "value" ? "postal-code" : "address-level2"}
               className="w-full bg-white px-4 py-3.5 text-sm text-[color:var(--navy)] outline-none placeholder:text-[color:var(--navy)]/50"
             />
           </label>
@@ -101,7 +97,7 @@ export function HeroSearchPanel() {
               type="button"
               onClick={() => {
                 setMode("value");
-                openMarketValue(location);
+                openValueCalculator(location);
               }}
               className={`cursor-pointer px-4 py-3.5 text-sm font-semibold tracking-wide uppercase transition-colors sm:px-5 ${
                 mode === "value"
@@ -117,9 +113,7 @@ export function HeroSearchPanel() {
 
       <p className="mt-3 text-center text-base text-[color:var(--muted)] md:text-lg">
         {mode === "value" ? (
-          <>
-            Latest sold price from HM Land Registry
-          </>
+          <>HM Land Registry sold prices × your floor area</>
         ) : (
           <>
             Find homes to rent nationwide across the UK ·{" "}
@@ -127,7 +121,7 @@ export function HeroSearchPanel() {
               type="button"
               onClick={() => {
                 setMode("value");
-                openMarketValue(location);
+                openValueCalculator(location);
               }}
               className="cursor-pointer font-medium text-[color:var(--gold)] hover:underline"
             >

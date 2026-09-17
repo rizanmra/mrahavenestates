@@ -38,10 +38,10 @@ export default function SalesPage() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link
-              href="/free-valuation"
+              href="/property-value-calculator"
               className="btn-gold px-8 py-3 text-sm font-medium uppercase"
             >
-              Market value
+              Property value calculator
             </Link>
             <Link
               href="/sell"

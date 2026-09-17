@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import type { Property } from "@/data/properties";
 import { site } from "@/data/site";
 import {
   consumeNewSignupWelcome,
@@ -15,6 +17,7 @@ export function AccountPortal() {
   const router = useRouter();
   const { ready, session, logout, savedSlugs, enquiries, isAdmin } = useAuth();
   const [isNewSignup] = useState(() => consumeNewSignupWelcome());
+  const [savedProperties, setSavedProperties] = useState<Property[]>([]);
 
   useEffect(() => {
     if (!ready) return;
@@ -30,6 +33,25 @@ export function AccountPortal() {
     return undefined;
   }, [isAdmin, ready, router, session]);
 
+  useEffect(() => {
+    if (!ready || !session || isAdmin) return;
+    if (savedSlugs.length === 0) {
+      setSavedProperties([]);
+      return;
+    }
+    const controller = new AbortController();
+    const qs = encodeURIComponent(savedSlugs.join(","));
+    void fetch(`/api/properties?slugs=${qs}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data: { properties?: Property[] }) => {
+        setSavedProperties(Array.isArray(data.properties) ? data.properties : []);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSavedProperties([]);
+      });
+    return () => controller.abort();
+  }, [isAdmin, ready, savedSlugs, session]);
+
   if (!ready || !session || isAdmin) {
     return (
       <div className="pt-36 px-6 text-center text-[color:var(--muted)]">
@@ -38,7 +60,7 @@ export function AccountPortal() {
     );
   }
 
-  const savedCount = savedSlugs.length;
+  const savedCount = savedProperties.length || savedSlugs.length;
   const myEnquiries = filterOwnEnquiries(
     session.userId,
     session.email,
@@ -139,6 +161,62 @@ export function AccountPortal() {
               </Link>
             </div>
           </div>
+        </div>
+
+        <div className="mx-auto mt-12 max-w-5xl">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h2 className="font-display text-3xl text-white">
+              Saved properties
+            </h2>
+            <Link
+              href="/saved-properties"
+              className="text-sm text-[color:var(--gold)] transition-colors hover:text-white"
+            >
+              Manage shortlist →
+            </Link>
+          </div>
+          {savedProperties.length === 0 ? (
+            <p className="mt-4 text-[color:var(--muted)]">
+              No saved properties yet.{" "}
+              <Link
+                href="/properties?type=rent"
+                className="text-[color:var(--gold)]"
+              >
+                Browse listings
+              </Link>{" "}
+              to build your shortlist.
+            </p>
+          ) : (
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+              {savedProperties.slice(0, 4).map((property) => (
+                <li key={property.slug}>
+                  <Link
+                    href={`/properties/${property.slug}`}
+                    className="flex gap-4 border border-[color:var(--line)] p-3 transition-colors hover:border-[color:var(--gold)]"
+                  >
+                    <div className="relative h-20 w-24 shrink-0">
+                      <Image
+                        src={property.image}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-white">{property.title}</p>
+                      <p className="mt-1 truncate text-sm text-[color:var(--muted)]">
+                        {property.location}
+                      </p>
+                      <p className="mt-1 text-sm text-[color:var(--gold)]">
+                        {property.price}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="mx-auto mt-12 max-w-5xl">

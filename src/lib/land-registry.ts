@@ -313,3 +313,256 @@ export function formatGbp(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+/** 1 m² = 10.7639 sq ft */
+export const SQ_FT_PER_M2 = 10.7639;
+
+export function sqFtToM2(sqFt: number): number {
+  return sqFt / SQ_FT_PER_M2;
+}
+
+export function m2ToSqFt(m2: number): number {
+  return m2 * SQ_FT_PER_M2;
+}
+
+/**
+ * Typical internal floor areas (m²) by property type.
+ * Used when EPC floor area isn't available — Land Registry PPD has no size field.
+ * Roughly aligned with English Housing Survey stock averages.
+ */
+const TYPICAL_FLOOR_M2: Record<string, number> = {
+  detached: 149,
+  semi: 95,
+  terrace: 85,
+  flat: 60,
+  bungalow: 80,
+  other: 90,
+};
+
+function typicalFloorM2(propertyType: string): number {
+  return TYPICAL_FLOOR_M2[propertyType] ?? TYPICAL_FLOOR_M2.other ?? 90;
+}
+
+function floorKeyFromLrType(lrType: string): string {
+  const type = lrType.toLowerCase();
+  if (type.includes("semi")) return "semi";
+  if (type.includes("detached")) return "detached";
+  if (type.includes("terrace")) return "terrace";
+  if (type.includes("flat") || type.includes("maisonette")) return "flat";
+  if (type.includes("bungalow")) return "bungalow";
+  return "other";
+}
+
+function buildDistrictQuery(outward: string, limit = 250): string {
+  const prefix = outward.replace(/"/g, "").toUpperCase();
+  return `
+prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+prefix lrppi: <http://landregistry.data.gov.uk/def/ppi/>
+prefix lrcommon: <http://landregistry.data.gov.uk/def/common/>
+prefix skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?paon ?saon ?street ?town ?postcode ?amount ?date ?propertyType
+WHERE {
+  ?addr lrcommon:postcode ?postcode .
+  FILTER(STRSTARTS(?postcode, "${prefix} "))
+  ?transx lrppi:propertyAddress ?addr ;
+          lrppi:pricePaid ?amount ;
+          lrppi:transactionDate ?date .
+  OPTIONAL { ?addr lrcommon:paon ?paon }
+  OPTIONAL { ?addr lrcommon:saon ?saon }
+  OPTIONAL { ?addr lrcommon:street ?street }
+  OPTIONAL { ?addr lrcommon:town ?town }
+  OPTIONAL { ?transx lrppi:propertyType/skos:prefLabel ?propertyType }
+}
+ORDER BY DESC(?date)
+LIMIT ${limit}
+`.trim();
+}
+
+type EpcFloorRow = {
+  address: string;
+  postcode: string;
+  floorAreaM2: number;
+  propertyType: string;
+};
+
+/** Optional Domestic EPC open-data lookup (needs EPC_API_EMAIL + EPC_API_KEY). */
+async function fetchEpcFloorAreas(postcode: string): Promise<EpcFloorRow[]> {
+  const email = process.env.EPC_API_EMAIL?.trim();
+  const key = process.env.EPC_API_KEY?.trim();
+  if (!email || !key) return [];
+
+  const auth = Buffer.from(`${email}:${key}`).toString("base64");
+  const url = new URL(
+    "https://epc.opendatacommunities.org/api/v1/domestic/search",
+  );
+  url.searchParams.set("postcode", postcode);
+  url.searchParams.set("size", "100");
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${auth}`,
+      },
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return [];
+
+    const json = (await res.json()) as {
+      rows?: Array<Record<string, string | number | undefined>>;
+    };
+    return (json.rows ?? [])
+      .map((row) => {
+        const floor = Number(
+          row["total-floor-area"] ?? row.total_floor_area ?? 0,
+        );
+        if (!Number.isFinite(floor) || floor < 20 || floor > 600) return null;
+        return {
+          address: String(row.address ?? row["address1"] ?? ""),
+          postcode: String(row.postcode ?? postcode),
+          floorAreaM2: floor,
+          propertyType: String(
+            row["property-type"] ?? row.property_type ?? "",
+          ),
+        } satisfies EpcFloorRow;
+      })
+      .filter((row): row is EpcFloorRow => Boolean(row));
+  } catch {
+    return [];
+  }
+}
+
+function matchEpcFloor(
+  sale: SoldTransaction,
+  epcs: EpcFloorRow[],
+): number | null {
+  if (!epcs.length) return null;
+  const paon = sale.paon.toUpperCase().replace(/\s+/g, "");
+  const street = sale.street.toUpperCase();
+  let best: EpcFloorRow | null = null;
+  let bestScore = 0;
+  for (const epc of epcs) {
+    const addr = epc.address.toUpperCase().replace(/\s+/g, " ");
+    let score = 0;
+    if (paon && addr.replace(/\s+/g, "").includes(paon)) score += 5;
+    if (street && addr.includes(street)) score += 3;
+    if (score > bestScore) {
+      bestScore = score;
+      best = epc;
+    }
+  }
+  if (!best || bestScore < 5) return null;
+  return best.floorAreaM2;
+}
+
+export type FloorAreaEstimate = {
+  low: number;
+  mid: number;
+  high: number;
+  pricePerSqM: number;
+  pricePerSqFt: number;
+  floorAreaSqFt: number;
+  floorAreaM2: number;
+  area: string;
+  salesCount: number;
+  method: "epc" | "typical-size";
+  attribution: string;
+};
+
+/**
+ * Local estimate from HM Land Registry sold prices → £/m² × user floor area.
+ * Floor areas for comps come from Domestic EPC open data when configured,
+ * otherwise from typical sizes for the selected property type.
+ */
+export async function estimateByFloorArea(params: {
+  postcode: string;
+  propertyType: string;
+  floorAreaSqFt: number;
+}): Promise<FloorAreaEstimate | null> {
+  const postcode = normalisePostcode(params.postcode);
+  const floorAreaSqFt = Number(params.floorAreaSqFt);
+  if (!postcode || !Number.isFinite(floorAreaSqFt) || floorAreaSqFt < 200) {
+    return null;
+  }
+
+  const floorAreaM2 = sqFtToM2(floorAreaSqFt);
+  let sales = await sparqlQuery(buildPostcodeQuery(postcode, 250));
+  let areaLabel = postcode;
+
+  if (sales.length < 5) {
+    const outward = postcode.split(" ")[0];
+    if (outward) {
+      const district = await sparqlQuery(buildDistrictQuery(outward, 250));
+      if (district.length > sales.length) {
+        sales = district;
+        areaLabel = `${outward} area`;
+      }
+    }
+  }
+
+  if (sales.length < 3) return null;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - 5);
+  const recent = sales.filter(
+    (sale) => Date.parse(sale.date) >= cutoff.getTime(),
+  );
+  const pool = recent.length >= 3 ? recent : sales;
+  const typed = pool.filter((sale) =>
+    matchesPropertyType(sale.propertyType, params.propertyType),
+  );
+  const comps = typed.length >= 3 ? typed : pool;
+
+  const epcs = await fetchEpcFloorAreas(postcode);
+  let epcHits = 0;
+  const rates: number[] = [];
+
+  for (const sale of comps) {
+    const inflated = inflateToToday(sale.amount, sale.date);
+    const epcM2 = matchEpcFloor(sale, epcs);
+    const floorM2 =
+      epcM2 ??
+      typicalFloorM2(
+        matchesPropertyType(sale.propertyType, params.propertyType)
+          ? params.propertyType
+          : floorKeyFromLrType(sale.propertyType),
+      );
+    if (epcM2) epcHits += 1;
+    if (floorM2 <= 0) continue;
+    const rate = inflated / floorM2;
+    if (rate > 500 && rate < 50_000) rates.push(rate);
+  }
+
+  if (rates.length < 3) return null;
+
+  const pricePerSqM = median(rates);
+  const mid = Math.round(pricePerSqM * floorAreaM2);
+  const lowRate = percentile(rates, 0.25);
+  const highRate = percentile(rates, 0.75);
+  let low = Math.round(lowRate * floorAreaM2);
+  let high = Math.round(highRate * floorAreaM2);
+
+  const maxSpread = Math.round(mid * 0.12);
+  if (mid - low > maxSpread) low = mid - maxSpread;
+  if (high - mid > maxSpread) high = mid + maxSpread;
+  if (low >= mid) low = mid - Math.round(mid * 0.06);
+  if (high <= mid) high = mid + Math.round(mid * 0.06);
+
+  const method = epcHits >= 3 ? "epc" : "typical-size";
+
+  return {
+    low,
+    mid,
+    high,
+    pricePerSqM: Math.round(pricePerSqM),
+    pricePerSqFt: Math.round(pricePerSqM / SQ_FT_PER_M2),
+    floorAreaSqFt: Math.round(floorAreaSqFt),
+    floorAreaM2: Math.round(floorAreaM2 * 10) / 10,
+    area: areaLabel,
+    salesCount: rates.length,
+    method,
+    attribution:
+      "Contains HM Land Registry data (Crown copyright and database right 2026). This information is licensed under the Open Government Licence v3.0.",
+  };
+}

@@ -24,6 +24,7 @@ const emptyForm = {
   location: "",
   price: "",
   beds: "2",
+  baths: "1",
   area: "",
   summary: "",
   image: "",
@@ -50,7 +51,6 @@ export function AdminPortal() {
   const [form, setForm] = useState(emptyForm);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [editingBaths, setEditingBaths] = useState(1);
   const [listingType, setListingType] = useState<"sale" | "rent">("rent");
   const [listingBusy, setListingBusy] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -100,7 +100,7 @@ export function AdminPortal() {
     const idToken = await firebaseGetIdToken(true);
     if (!idToken) {
       throw new Error(
-        "Staff Firebase session missing. Sign out, then sign in again at /login with mrahavenestates@gmail.com.",
+        "Staff Firebase session missing. Sign out, then sign in again at /login with the admin account.",
       );
     }
     const res = await fetch("/api/admin/session", {
@@ -308,13 +308,13 @@ export function AdminPortal() {
   function startEdit(property: Property) {
     setEditingSlug(property.slug);
     setEditingTitle(property.title);
-    setEditingBaths(property.baths || 1);
     setListingType(property.type === "sale" ? "sale" : "rent");
     setForm({
       title: property.title,
       location: property.location,
       price: property.price,
       beds: String(property.beds),
+      baths: String(property.baths || 1),
       area: property.area,
       summary: property.summary,
       image: property.image,
@@ -336,7 +336,6 @@ export function AdminPortal() {
   function resetForm() {
     setEditingSlug(null);
     setEditingTitle("");
-    setEditingBaths(1);
     setListingType("rent");
     setForm(emptyForm);
   }
@@ -351,7 +350,7 @@ export function AdminPortal() {
         location: form.location,
         price: form.price,
         beds: Number(form.beds) || 0,
-        baths: editingSlug ? editingBaths : 1,
+        baths: Number(form.baths) || 1,
         area: form.area,
         type: listingType,
         status: listingType === "sale" ? ("For Sale" as const) : ("For Rent" as const),
@@ -365,10 +364,18 @@ export function AdminPortal() {
           editingSlug ? { ...payload, slug: editingSlug } : payload,
         ),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        warning?: string;
+        firestore?: boolean;
+      };
       if (!res.ok || !data.ok) {
         setError(data.error || "Could not save property.");
         return;
+      }
+      if (data.warning) {
+        setError(data.warning);
       }
       resetForm();
       await loadListings();
@@ -392,10 +399,18 @@ export function AdminPortal() {
           credentials: "include",
         },
       );
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        warning?: string;
+        firestore?: boolean;
+      };
       if (!res.ok || !data.ok) {
         setError(data.error || "Could not remove property.");
         return;
+      }
+      if (data.warning) {
+        setError(data.warning);
       }
       if (editingSlug === slug) resetForm();
       await loadListings();
@@ -497,6 +512,12 @@ export function AdminPortal() {
             >
               Enquiries ({unread})
             </button>
+            <a
+              href="/properties"
+              className="cursor-pointer border border-[color:var(--line)] px-5 py-3 text-sm uppercase tracking-wide text-white hover:border-[color:var(--gold)]"
+            >
+              Properties
+            </a>
             <button
               type="button"
               onClick={() => selectTab("listings")}
@@ -707,7 +728,7 @@ export function AdminPortal() {
                             }))
                           }
                           className="mt-2 w-full border border-[color:var(--line)] bg-transparent p-3 text-white outline-none focus:border-[color:var(--gold)]"
-                          placeholder="Write a reply. It is saved on the client account even if email is unavailable."
+                          placeholder="Write a reply. It is saved on the client account (email delivery is off until the client configures SMTP)."
                         />
                       </label>
                       <button
@@ -848,6 +869,7 @@ export function AdminPortal() {
                       ],
                       ["area", "Area"],
                       ["beds", "Bedrooms"],
+                      ["baths", "Bathrooms"],
                       ["image", "Image URL"],
                     ] as const
                   ).map(([key, label]) => (

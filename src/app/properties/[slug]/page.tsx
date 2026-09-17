@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PropertyStaffActions } from "@/components/PropertyStaffActions";
-import { getProperty, seedProperties } from "@/data/properties";
+import { getPropertyBySlug, listProperties } from "@/lib/listings-store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +11,22 @@ type PropertyPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export function generateStaticParams() {
-  return seedProperties.map((property) => ({ slug: property.slug }));
+export async function generateStaticParams() {
+  const properties = await listProperties();
+  return properties.map((property) => ({ slug: property.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = getProperty(slug);
+  const property = await getPropertyBySlug(slug);
   return { title: property?.title ?? "Property" };
 }
 
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property = getProperty(slug);
+  const property = await getPropertyBySlug(slug);
 
   if (!property) {
     notFound();

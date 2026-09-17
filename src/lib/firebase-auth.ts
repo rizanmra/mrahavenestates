@@ -120,7 +120,7 @@ async function resolveAdminRole(session: PortalSession): Promise<PortalSession> 
   const token = await firebaseGetIdToken();
   if (!token) return { ...session, isAdmin: reserved };
   try {
-    const res = await fetch("/api/admin/claim", {
+    const res = await fetch("/api/admin/role", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -159,7 +159,8 @@ export async function firebaseEnrichSession(
   return resolveAdminRole({
     ...session,
     name: profile.name || session.name,
-    phone: profile.phone || undefined,
+    // Keep a phone already on the session if Firestore is briefly empty/racing.
+    phone: profile.phone || session.phone || undefined,
   });
 }
 
@@ -243,9 +244,13 @@ export async function firebaseRegister(input: {
     const displayName = input.name.trim();
     const phone = formatPhoneForStorage(input.phone);
     const email = input.email.trim().toLowerCase();
+    if (!phone) {
+      throw new Error("Please enter a valid UK phone number.");
+    }
     await updateProfile(result.user, { displayName });
 
     // Phone is not stored on Firebase Auth — persist it on the Firestore profile.
+    // Do not swallow failures: otherwise the session can show a phone that was never saved.
     try {
       await withTimeout(
         setDoc(
@@ -258,12 +263,26 @@ export async function firebaseRegister(input: {
             enquiries: [],
             createdAt: Date.now(),
           }),
+          { merge: true },
         ),
         FIRESTORE_TIMEOUT_MS,
         FIRESTORE_SETUP_ERROR,
       );
     } catch (error) {
-      console.warn("[firebase] profile save skipped", error);
+      console.error("[firebase] profile save failed", error);
+      throw new Error(
+        error instanceof Error && error.message === FIRESTORE_SETUP_ERROR
+          ? FIRESTORE_SETUP_ERROR
+          : "Account created, but your phone could not be saved. Check Firestore is set up, then try registering again or contact support.",
+      );
+    }
+
+    // Confirm the phone field actually landed (rules / offline can look like success).
+    const saved = await fetchProfile(result.user.uid);
+    if (!saved.phone) {
+      throw new Error(
+        "Account created, but your phone could not be saved. Check Firestore rules allow writing to users/{uid}, then try again.",
+      );
     }
 
     await result.user.reload();
@@ -271,7 +290,7 @@ export async function firebaseRegister(input: {
     return {
       ...session,
       name: displayName,
-      phone,
+      phone: saved.phone,
     };
   } catch (error) {
     if (

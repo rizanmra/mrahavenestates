@@ -43,6 +43,50 @@ export async function purgePropertyFromAllUsers(slug: string): Promise<number> {
 }
 
 /**
+ * When a listing slug changes, rewrite saved shortlists to the new slug
+ * so clients keep the property instead of a dead link.
+ */
+export async function renamePropertyInAllUsers(
+  previousSlug: string,
+  nextSlug: string,
+): Promise<number> {
+  if (!previousSlug || !nextSlug || previousSlug === nextSlug) return 0;
+  const db = getAdminFirestore();
+  if (!db) return 0;
+
+  const snap = await db.collection("users").get();
+  let updated = 0;
+  let batch = db.batch();
+  let ops = 0;
+
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const saved = data.savedProperties;
+    if (!Array.isArray(saved) || !saved.includes(previousSlug)) continue;
+
+    const next = [
+      ...new Set(
+        saved
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => (item === previousSlug ? nextSlug : item)),
+      ),
+    ];
+    batch.set(doc.ref, { savedProperties: next }, { merge: true });
+    updated += 1;
+    ops += 1;
+
+    if (ops >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+
+  if (ops > 0) await batch.commit();
+  return updated;
+}
+
+/**
  * Compare live catalogue slugs to the last known list in Firestore.
  * Any slug that disappeared is purged from all user shortlists.
  */

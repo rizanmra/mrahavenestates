@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { claimOrGetAdmin, lookupFirebaseUser } from "@/lib/admin-server";
+import { resolveAdminAccess, lookupFirebaseUser } from "@/lib/admin-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await claimOrGetAdmin(user, token);
+  const result = await resolveAdminAccess(user, token);
   return NextResponse.json({
     ok: true,
     isAdmin: result.isAdmin,

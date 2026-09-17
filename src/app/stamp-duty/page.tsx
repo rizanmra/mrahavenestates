@@ -1,25 +1,37 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { InfoBody, PageHero } from "@/components/PageTemplate";
-import { StampDutyCalculator } from "./StampDutyCalculator";
+import { PropertyValueCalculator } from "@/app/property-value-calculator/PropertyValueCalculator";
 
 export const metadata: Metadata = {
-  title: "Stamp Duty Calculator",
-  description: "Calculate stamp duty on your property purchase.",
+  title: "Property Value Calculator",
+  description:
+    "Estimate local property value from HM Land Registry sold prices.",
 };
 
+/** Former stamp-duty route now hosts the site’s property value calculator. */
 export default function StampDutyPage() {
   return (
     <>
       <PageHero
-        title="Stamp Duty Calculator"
-        subtitle="A quick England & Northern Ireland SDLT estimate."
+        title="Property Value Calculator"
+        subtitle="Local sold prices from HM Land Registry, turned into a £/m² guide for your floor area."
       />
-      <InfoBody cta={{ label: "Speak to an advisor", href: "/contact?reason=stamp-duty" }}>
+      <InfoBody
+        cta={{
+          label: "Open full calculator page",
+          href: "/property-value-calculator",
+        }}
+      >
         <p>
-          Use this guide to estimate Stamp Duty Land Tax on a residential
-          purchase. Rates can change and additional surcharges may apply.
+          This calculator uses HM Land Registry sold prices to estimate value
+          from price per square metre × your floor area.{" "}
+          <Link href="/property-value-calculator" className="text-[color:var(--gold)]">
+            Open the dedicated calculator page
+          </Link>
+          .
         </p>
-        <StampDutyCalculator />
+        <PropertyValueCalculator />
       </InfoBody>
     </>
   );

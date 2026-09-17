@@ -16,7 +16,7 @@ export default function SellPage() {
         image={siteImages.sales}
       />
       <InfoBody
-        cta={{ label: "Find market value", href: "/free-valuation" }}
+        cta={{ label: "Find market value", href: "/property-value-calculator" }}
         bullets={[
           "Professional photography and video tours",
           "Rightmove and Zoopla premium listings",

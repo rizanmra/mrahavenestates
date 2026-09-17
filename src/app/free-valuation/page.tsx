@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import FreeValuationForm from "./FreeValuationForm";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Market Value",
-  description:
-    "Find the latest HM Land Registry sold price for a UK property address, then unlock your figure with a valid email.",
+  title: "Property Value Calculator",
 };
 
+/** Past-sales Market Value tool retired — use £/m² calculator instead. */
 export default function FreeValuationPage() {
-  return <FreeValuationForm />;
+  redirect("/property-value-calculator");
 }

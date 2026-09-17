@@ -10,7 +10,8 @@ import type { Property } from "@/data/properties";
 export function SavedPropertiesClient() {
   const router = useRouter();
   const { ready, session, savedSlugs, toggleSave, isAdmin } = useAuth();
-  const [catalogue, setCatalogue] = useState<Property[]>([]);
+  const [saved, setSaved] = useState<Property[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
 
   useEffect(() => {
     if (ready && isAdmin) {
@@ -23,13 +24,31 @@ export function SavedPropertiesClient() {
   }, [isAdmin, ready, router, session]);
 
   useEffect(() => {
-    void fetch("/api/properties")
+    if (!ready || !session || isAdmin) return;
+
+    if (savedSlugs.length === 0) {
+      setSaved([]);
+      setLoadingList(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setLoadingList(true);
+    const qs = encodeURIComponent(savedSlugs.join(","));
+    void fetch(`/api/properties?slugs=${qs}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data: { properties?: Property[] }) => {
-        setCatalogue(Array.isArray(data.properties) ? data.properties : []);
+        setSaved(Array.isArray(data.properties) ? data.properties : []);
       })
-      .catch(() => setCatalogue([]));
-  }, []);
+      .catch(() => {
+        if (!controller.signal.aborted) setSaved([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingList(false);
+      });
+
+    return () => controller.abort();
+  }, [isAdmin, ready, savedSlugs, session]);
 
   if (!ready || !session || isAdmin) {
     return (
@@ -39,11 +58,6 @@ export function SavedPropertiesClient() {
     );
   }
 
-  const bySlug = new Map(catalogue.map((item) => [item.slug, item]));
-  const saved = savedSlugs
-    .map((slug) => bySlug.get(slug))
-    .filter((property): property is Property => Boolean(property));
-
   return (
     <div className="page-offset">
       <section className="px-6 py-16 lg:px-10">
@@ -52,12 +66,18 @@ export function SavedPropertiesClient() {
             My Saved Properties
           </h1>
           <p className="mt-4 text-[color:var(--muted)]">
-            Your shortlist of homes to rent.
+            Your shortlist of homes — details loaded from live listings.
           </p>
 
-          {saved.length === 0 ? (
+          {loadingList ? (
             <p className="mt-12 text-[color:var(--muted)]">
-              You have not saved any properties yet.{" "}
+              Loading your shortlist…
+            </p>
+          ) : saved.length === 0 ? (
+            <p className="mt-12 text-[color:var(--muted)]">
+              {savedSlugs.length > 0
+                ? "Those saved listings are no longer available."
+                : "You have not saved any properties yet."}{" "}
               <Link
                 href="/properties?type=rent"
                 className="text-[color:var(--gold)]"
@@ -104,6 +124,10 @@ export function SavedPropertiesClient() {
                         </p>
                         <p className="mt-3 text-lg text-white">
                           {property.price}
+                        </p>
+                        <p className="mt-2 text-xs text-[color:var(--muted)]">
+                          {property.beds} bed · {property.baths} bath ·{" "}
+                          {property.area}
                         </p>
                       </div>
                     </Link>

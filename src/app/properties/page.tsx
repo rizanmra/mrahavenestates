@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertiesEmptyCopy } from "@/components/PropertiesEmptyCopy";
-import {
-  getPropertiesByType,
-  type PropertyType,
-} from "@/data/properties";
+import { getPropertiesByType } from "@/lib/listings-store";
+import type { PropertyType } from "@/data/properties";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +21,19 @@ type PropertiesPageProps = {
   }>;
 };
 
+function buildTypeHref(
+  type: PropertyType,
+  params: { location?: string; beds?: string; min?: string; max?: string },
+) {
+  const query = new URLSearchParams();
+  query.set("type", type);
+  if (params.location?.trim()) query.set("location", params.location.trim());
+  if (params.beds?.trim()) query.set("beds", params.beds.trim());
+  if (params.min?.trim()) query.set("min", params.min.trim());
+  if (params.max?.trim()) query.set("max", params.max.trim());
+  return `/properties?${query.toString()}`;
+}
+
 export default async function PropertiesPage({
   searchParams,
 }: PropertiesPageProps) {
@@ -29,7 +41,7 @@ export default async function PropertiesPage({
   const type: PropertyType = params.type === "sale" ? "sale" : "rent";
   const forSale = type === "sale";
 
-  let results = getPropertiesByType(type);
+  let results = await getPropertiesByType(type);
 
   if (params.location) {
     const query = params.location.toLowerCase();
@@ -48,6 +60,8 @@ export default async function PropertiesPage({
   }
 
   const locationLabel = params.location?.trim() || "";
+  const rentHref = buildTypeHref("rent", params);
+  const saleHref = buildTypeHref("sale", params);
 
   return (
     <div className="page-offset">
@@ -63,6 +77,29 @@ export default async function PropertiesPage({
                 ? "Homes for sale nationwide across the UK"
                 : "Homes available to rent nationwide across the UK"}
           </p>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            <Link
+              href={rentHref}
+              className={`px-5 py-3 text-sm uppercase tracking-wide ${
+                !forSale
+                  ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
+                  : "border border-[color:var(--line)] text-white hover:border-[color:var(--gold)]"
+              }`}
+            >
+              Rent
+            </Link>
+            <Link
+              href={saleHref}
+              className={`px-5 py-3 text-sm uppercase tracking-wide ${
+                forSale
+                  ? "bg-[color:var(--gold)] text-[color:var(--navy)]"
+                  : "border border-[color:var(--line)] text-white hover:border-[color:var(--gold)]"
+              }`}
+            >
+              Buy
+            </Link>
+          </div>
 
           {results.length === 0 ? (
             <PropertiesEmptyCopy

@@ -7,6 +7,7 @@ export async function sendInboxEnquiry(input: {
   message: string;
   reason?: string;
   source?: string;
+  allowMissingPhone?: boolean;
 }): Promise<{ id?: string; error?: string }> {
   try {
     const res = await fetch("/api/enquiry", {
@@ -19,7 +20,7 @@ export async function sendInboxEnquiry(input: {
         message: input.message,
         source: input.source || "contact",
         reason: input.reason || "general",
-        allowMissingPhone: true,
+        allowMissingPhone: Boolean(input.allowMissingPhone),
       }),
     });
     const data = (await res.json()) as {

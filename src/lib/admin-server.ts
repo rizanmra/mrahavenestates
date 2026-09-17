@@ -5,7 +5,7 @@ import {
   verifyStaffSessionToken,
 } from "@/lib/admin-session";
 import { recordClientEnquiryStatusUpdate } from "@/lib/client-enquiry-updates";
-import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
+import { getAdminFirestore } from "@/lib/firebase-admin";
 import { isReservedStaffEmail } from "@/lib/admin";
 import {
   isPropertyEnquiryRecord,
@@ -91,21 +91,6 @@ async function readAssignedAdminFromSdk(): Promise<AssignedAdmin | null> {
   return { userId, email };
 }
 
-async function writeAssignedAdminWithSdk(admin: AssignedAdmin): Promise<boolean> {
-  const db = getAdminFirestore();
-  if (!db) return false;
-  try {
-    await db.doc("config/admin").create({
-      userId: admin.userId,
-      email: admin.email,
-      claimedAt: Date.now(),
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function readAssignedAdminFromRest(
   idToken?: string,
 ): Promise<AssignedAdmin | null> {
@@ -128,34 +113,6 @@ async function readAssignedAdminFromRest(
   const email = data.fields?.email?.stringValue?.trim().toLowerCase();
   if (!userId || !email) return null;
   return { userId, email };
-}
-
-async function writeAssignedAdminWithRest(
-  admin: AssignedAdmin,
-  idToken: string,
-): Promise<boolean> {
-  const projectId = firebaseProjectId();
-  const apiKey = firebaseApiKey();
-  if (!projectId || !apiKey) return false;
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/config/admin?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fields: {
-          userId: { stringValue: admin.userId },
-          email: { stringValue: admin.email },
-          claimedAt: { integerValue: String(Date.now()) },
-        },
-      }),
-      signal: AbortSignal.timeout(15000),
-    },
-  );
-  return res.ok;
 }
 
 let memoryAdmin: AssignedAdmin | null = null;
@@ -182,55 +139,20 @@ export async function getAssignedAdmin(
   }
 }
 
-async function firstFirebaseAuthUser(): Promise<AssignedAdmin | null> {
-  const auth = getAdminAuth();
-  if (!auth) return null;
-  try {
-    const list = await auth.listUsers(10);
-    if (list.users.length === 0) return null;
-    const first = [...list.users].sort((left, right) =>
-      String(left.metadata.creationTime).localeCompare(
-        String(right.metadata.creationTime),
-      ),
-    )[0];
-    const email = first?.email?.trim().toLowerCase();
-    const userId = first?.uid;
-    if (!email || !userId) return null;
-    return { userId, email };
-  } catch {
-    return null;
-  }
-}
-
-export async function claimOrGetAdmin(
+/** Reserved staff email or match against existing config/admin (no auto-claim). */
+export async function resolveAdminAccess(
   user: AssignedAdmin,
   idToken?: string,
 ): Promise<{ isAdmin: boolean; admin: AssignedAdmin | null }> {
-  let existing = await getAssignedAdmin(idToken);
-  if (!existing) {
-    existing = await firstFirebaseAuthUser();
+  if (isReservedStaffEmail(user.email)) {
+    const admin = await getAssignedAdmin(idToken);
+    return { isAdmin: true, admin: admin ?? user };
   }
-  if (!existing) {
-    existing = {
-      userId: user.userId,
-      email: user.email.trim().toLowerCase(),
-    };
-  }
-  memoryAdmin = existing;
-  try {
-    const viaSdk = await writeAssignedAdminWithSdk(existing);
-    if (!viaSdk && idToken) {
-      await writeAssignedAdminWithRest(existing, idToken);
-    }
-  } catch {
-    if (idToken) {
-      await writeAssignedAdminWithRest(existing, idToken).catch(() => false);
-    }
-  }
+  const admin = await getAssignedAdmin(idToken);
+  if (!admin) return { isAdmin: false, admin: null };
   return {
-    isAdmin:
-      isReservedStaffEmail(user.email) || matchesAdmin(existing, user),
-    admin: existing,
+    isAdmin: matchesAdmin(admin, user),
+    admin,
   };
 }
 
@@ -250,8 +172,8 @@ export async function requireAdminFromRequest(
       if (isReservedStaffEmail(user.email)) {
         return { ok: true, email: user.email, idToken: token };
       }
-      const claimed = await claimOrGetAdmin(user, token);
-      if (claimed.isAdmin) {
+      const access = await resolveAdminAccess(user, token);
+      if (access.isAdmin) {
         return { ok: true, email: user.email, idToken: token };
       }
       return { ok: false, status: 403, error: "Admin access only." };
@@ -296,6 +218,7 @@ async function staffIdToken(): Promise<string | null> {
   const email =
     assigned?.email ||
     process.env.ADMIN_EMAIL?.trim().toLowerCase() ||
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ||
     "mrahavenestates@gmail.com";
   if (!apiKey || !password || !email) return null;
 
@@ -522,6 +445,8 @@ async function listFromFirestoreRest(
           method: "POST",
           headers,
           body: JSON.stringify({
+            // Equality-only query — sort by createdAt in mergeRecords so we
+            // don't require a composite Firestore index (email + createdAt).
             structuredQuery: {
               from: [{ collectionId: COLLECTION }],
               where: {
@@ -531,9 +456,6 @@ async function listFromFirestoreRest(
                   value: { stringValue: emailFilter.trim().toLowerCase() },
                 },
               },
-              orderBy: [
-                { field: { fieldPath: "createdAt" }, direction: "DESCENDING" },
-              ],
               limit: 100,
             },
           }),
@@ -714,47 +636,6 @@ export async function markPropertyEnquiryRead(
   return next;
 }
 
-async function sendReplyEmail(input: {
-  to: string;
-  name: string;
-  reply: string;
-  propertyTitle: string;
-  originalMessage: string;
-}) {
-  const user = process.env.CONTACT_SMTP_USER?.trim();
-  const pass = process.env.CONTACT_SMTP_PASS?.trim();
-  if (!user || !pass) {
-    throw new Error("Email is not configured (CONTACT_SMTP_USER / CONTACT_SMTP_PASS).");
-  }
-
-  const nodemailer = await import("nodemailer");
-  const host = process.env.CONTACT_SMTP_HOST?.trim() || "smtp.gmail.com";
-  const port = Number(process.env.CONTACT_SMTP_PORT || "465");
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-
-  await transporter.sendMail({
-    from: `"MRA Haven Estates" <${user}>`,
-    to: input.to,
-    subject: `Re: your enquiry about ${input.propertyTitle}`,
-    text: [
-      `Hello ${input.name},`,
-      "",
-      input.reply,
-      "",
-      "—",
-      "MRA Haven Estates",
-      "",
-      "Your original message:",
-      input.originalMessage,
-    ].join("\n"),
-  });
-}
-
 async function markClientEnquiryStatus(input: {
   email: string;
   sourceEnquiryId: string;
@@ -847,18 +728,6 @@ export async function replyToPropertyEnquiry(input: {
     });
   } catch (error) {
     console.warn("[admin] client enquiry status update skipped", error);
-  }
-
-  try {
-    await sendReplyEmail({
-      to: current.email,
-      name: current.name,
-      reply,
-      propertyTitle: current.property.title,
-      originalMessage: current.message,
-    });
-  } catch (error) {
-    console.warn("[admin] reply email skipped", error);
   }
 
   return next;

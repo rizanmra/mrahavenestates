@@ -40,7 +40,7 @@ export const pages: Record<string, PageContent> = {
       "Social media and email campaigns to our buyer database",
       "Regular feedback and viewing reports",
     ],
-    cta: { label: "Find market value", href: "/free-valuation" },
+    cta: { label: "Find market value", href: "/property-value-calculator" },
   },
   "sell/auction": {
     title: "Sell at Auction",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isReservedStaffEmail } from "@/lib/admin";
 import {
-  claimOrGetAdmin,
+  resolveAdminAccess,
   getAssignedAdmin,
   lookupFirebaseUser,
 } from "@/lib/admin-server";
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
     return res;
   }
 
-  const claimed = await claimOrGetAdmin(user, idToken);
-  if (!claimed.isAdmin) {
+  const access = await resolveAdminAccess(user, idToken);
+  if (!access.isAdmin) {
     return NextResponse.json(
       { ok: false, error: "Admin access only." },
       { status: 403 },

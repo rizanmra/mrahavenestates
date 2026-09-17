@@ -20,15 +20,16 @@ export const mainNav: NavItem[] = [
     label: "Sell",
     href: "/sell",
     highlight: {
-      label: "How much is my house worth?",
-      href: "/free-valuation",
+      label: "Property value calculator",
+      href: "/property-value-calculator",
     },
     columns: [
       {
         title: "Selling Your Property",
         links: [
           { label: "Sell Your Property", href: "/sell" },
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
+
           { label: "Sell at Auction", href: "/sell/auction" },
         ],
       },
@@ -43,7 +44,8 @@ export const mainNav: NavItem[] = [
       {
         title: "Useful Information",
         links: [
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
+
           { label: "Find Your Local Branch", href: "/branches" },
           { label: "Property Insights & News", href: "/news" },
         ],
@@ -85,8 +87,8 @@ export const mainNav: NavItem[] = [
     label: "Landlords",
     href: "/landlords",
     highlight: {
-      label: "Find Market Value",
-      href: "/free-valuation",
+      label: "Property value calculator",
+      href: "/property-value-calculator",
     },
     columns: [
       {
@@ -128,7 +130,7 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Mortgage Advice", href: "/mortgages" },
           { label: "Buy to Let Mortgages", href: "/mortgages/buy-to-let" },
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
         ],
       },
       {
@@ -136,13 +138,14 @@ export const mainNav: NavItem[] = [
         links: [
           { label: "Find a Property to Rent", href: "/properties?type=rent" },
           { label: "Selling Your Property", href: "/sell" },
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
         ],
       },
       {
         title: "Useful Information",
         links: [
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
+
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
           { label: "Contact Us", href: "/contact?reason=mortgage" },
         ],
@@ -176,7 +179,8 @@ export const mainNav: NavItem[] = [
       {
         title: "Useful Information",
         links: [
-          { label: "Market Value", href: "/free-valuation" },
+          { label: "Property Value Calculator", href: "/property-value-calculator" },
+
           { label: "Stamp Duty Calculator", href: "/stamp-duty" },
           { label: "Contact Us", href: "/contact?reason=conveyancing" },
         ],
@@ -187,8 +191,8 @@ export const mainNav: NavItem[] = [
     label: "About",
     href: "/about",
     highlight: {
-      label: "Find Market Value",
-      href: "/free-valuation",
+      label: "Property value calculator",
+      href: "/property-value-calculator",
     },
     columns: [
       {

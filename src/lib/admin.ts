@@ -5,7 +5,7 @@ export type AssignedAdmin = {
   email: string;
 };
 
-/** Always treated as staff, even if the first-user claim has not loaded yet. */
+/** Always treated as staff (matches ADMIN / NEXT_PUBLIC_ADMIN_EMAIL). */
 export const STAFF_EMAILS = ["mrahavenestates@gmail.com"] as const;
 
 let cachedAdmin: AssignedAdmin | null = null;
@@ -14,11 +14,19 @@ export function normalizeEmail(email: string | null | undefined): string {
   return email?.trim().toLowerCase() ?? "";
 }
 
+/** Reserved emails + NEXT_PUBLIC_ADMIN_EMAIL from env. */
+function reservedStaffEmails(): string[] {
+  const fromEnv = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL);
+  const list: string[] = [...STAFF_EMAILS];
+  if (fromEnv && !list.includes(fromEnv)) list.push(fromEnv);
+  return list;
+}
+
 export function isReservedStaffEmail(
   email: string | null | undefined,
 ): boolean {
   const normalized = normalizeEmail(email);
-  return STAFF_EMAILS.some((item) => item === normalized);
+  return reservedStaffEmails().some((item) => item === normalized);
 }
 
 export function getCachedAdmin(): AssignedAdmin | null {
@@ -39,7 +47,7 @@ export function isAdminAccount(
   return Boolean(normalized && cachedAdmin.email === normalized);
 }
 
-/** Reserved staff email, first-user claim, or a session already marked admin. */
+/** Reserved staff email or assigned config/admin account. */
 export function isAdminEmail(
   email: string | null | undefined,
   userId?: string | null,

@@ -11,13 +11,29 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "www.gstatic.com",
+      },
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.firebasestorage.app",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+      },
     ],
   },
   async redirects() {
     return [
       {
-        source: "/property-value-calculator",
-        destination: "/free-valuation",
+        source: "/free-valuation",
+        destination: "/property-value-calculator",
         permanent: true,
       },
     ];

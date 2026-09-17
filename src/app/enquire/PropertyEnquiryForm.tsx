@@ -9,8 +9,6 @@ import { seedProperties, type Property } from "@/data/properties";
 import { firebaseCreatePropertyEnquiry } from "@/lib/firebase-auth";
 import {
   formatPhoneForStorage,
-  maskEmail,
-  maskPhone,
   validateEmail,
   validateName,
   validatePhone,
@@ -41,8 +39,8 @@ export default function PropertyEnquiryForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { session, recordEnquiry } = useAuth();
-  const loggedIn = Boolean(session);
+  const { session, recordEnquiry, isAdmin } = useAuth();
+  const loggedIn = Boolean(session) && !isAdmin;
 
   useEffect(() => {
     void fetch("/api/properties")
@@ -169,6 +167,10 @@ export default function PropertyEnquiryForm() {
     }
   }
 
+  if (isAdmin) {
+    return null;
+  }
+
   return (
     <div className="page-offset">
       <section className="px-6 py-16 lg:px-10">
@@ -258,31 +260,10 @@ export default function PropertyEnquiryForm() {
               </label>
 
               {loggedIn && session ? (
-                <div className="space-y-4 border border-[color:var(--line)] bg-[color:var(--navy-light)] p-5">
-                  <p className="text-xs tracking-[0.25em] text-[color:var(--gold)] uppercase">
-                    What we&apos;ll send
-                  </p>
-                  <dl className="space-y-3 text-sm">
-                    <div>
-                      <dt className="text-[color:var(--muted)]">Name</dt>
-                      <dd className="mt-1 text-white">{session.name}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[color:var(--muted)]">Email</dt>
-                      <dd className="mt-1 text-white">
-                        {maskEmail(session.email)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[color:var(--muted)]">Phone</dt>
-                      <dd className="mt-1 text-white">
-                        {session.phone
-                          ? maskPhone(session.phone)
-                          : "Not on file"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
+                <p className="text-sm text-[color:var(--muted)]">
+                  Signed in as {session.name}. We&apos;ll use your account
+                  details — select a property and ask your question.
+                </p>
               ) : (
                 <>
                   <label className="block">
@@ -319,7 +300,7 @@ export default function PropertyEnquiryForm() {
               )}
 
               <label className="block">
-                <span className="text-sm text-white">Message *</span>
+                <span className="text-sm text-white">Question *</span>
                 <textarea
                   required
                   name="message"
