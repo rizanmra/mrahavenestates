@@ -75,7 +75,8 @@ service cloud.firestore {
 
 ## 2. Add env vars on Vercel
 
-Project → Settings → Environment Variables → add all from `.env.example`:
+Project → Settings → Environment Variables → add all from `.env.example`
+(use the **same** values as local `.env.local` — project `mra-haven-estates-2e26e`):
 
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -85,6 +86,20 @@ Project → Settings → Environment Variables → add all from `.env.example`:
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 
 Redeploy after saving.
+
+If login works on localhost but not on the live site, Vercel is almost always
+pointing at a different Firebase project (or missing these vars). Local auth
+does **not** read passwords from Firestore — it uses **Firebase Authentication**.
+
+### Firebase Auth → Authorized domains
+
+In Firebase Console (project `mra-haven-estates-2e26e`) → Authentication →
+Settings → Authorized domains, include:
+
+- `localhost`
+- `mrahavenestates.vercel.app`
+- `mrahavenestates.com`
+- `www.mrahavenestates.com`
 
 ## 3. Domains (Vercel project: mrahavenestates)
 

@@ -16,14 +16,14 @@ export type FirebasePublicConfig = {
   appId: string;
 };
 
-/** Public web app config for mra-haven-estates-7a175. Safe to ship in the client. */
+/** Public web app config for mra-haven-estates-2e26e. Safe to ship in the client. */
 const PROJECT_CONFIG: FirebasePublicConfig = {
-  apiKey: "AIzaSyDboKVyms5DbYarOVbj_V8_AIImCPupLTU",
-  authDomain: "mra-haven-estates-7a175.firebaseapp.com",
-  projectId: "mra-haven-estates-7a175",
-  storageBucket: "mra-haven-estates-7a175.firebasestorage.app",
-  messagingSenderId: "320984899387",
-  appId: "1:320984899387:web:3df31e699071c5bf9e611e",
+  apiKey: "AIzaSyC1h2j7CCKJ49omnK5oeQsRJ8Nikp-UTdc",
+  authDomain: "mra-haven-estates-2e26e.firebaseapp.com",
+  projectId: "mra-haven-estates-2e26e",
+  storageBucket: "mra-haven-estates-2e26e.firebasestorage.app",
+  messagingSenderId: "112003430709",
+  appId: "1:112003430709:web:9d103d9fd1ec3175f8747c",
 };
 
 function readConfig(): FirebasePublicConfig {
