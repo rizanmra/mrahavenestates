@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
+import type { PropertyType } from "@/data/properties";
 import {
   getPropertiesBySlugs,
   getPropertiesByType,
   listProperties,
-  type PropertyType,
 } from "@/lib/listings-store";
 
 export const dynamic = "force-dynamic";
