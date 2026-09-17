@@ -5,6 +5,10 @@ import {
   isPropertyEnquiryRecord,
   type PropertyEnquiryRecord,
 } from "@/lib/property-enquiry";
+import {
+  serverFirebaseApiKey,
+  serverFirebaseProjectId,
+} from "@/lib/firebase-env";
 
 /**
  * Lightweight inbox writer for public /api/enquiry.
@@ -25,15 +29,11 @@ type TokenCache = { token: string; expiresAt: number };
 let staffToken: TokenCache | null = null;
 
 function firebaseApiKey() {
-  return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
+  return serverFirebaseApiKey();
 }
 
 function firebaseProjectId() {
-  return (
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
-    process.env.FIREBASE_PROJECT_ID?.trim() ||
-    ""
-  );
+  return serverFirebaseProjectId();
 }
 
 export function newEnquiryId() {

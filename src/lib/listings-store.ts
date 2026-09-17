@@ -9,6 +9,10 @@ import {
   type PropertyType,
 } from "@/data/properties";
 import { getAdminFirestore } from "@/lib/firebase-admin";
+import {
+  serverFirebaseApiKey,
+  serverFirebaseProjectId,
+} from "@/lib/firebase-env";
 
 const COLLECTION = "properties";
 const FILE_PATH = path.join(
@@ -20,15 +24,11 @@ let cache: Property[] | null = null;
 let seedInFlight: Promise<void> | null = null;
 
 function firebaseApiKey() {
-  return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
+  return serverFirebaseApiKey();
 }
 
 function firebaseProjectId() {
-  return (
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
-    process.env.FIREBASE_PROJECT_ID?.trim() ||
-    ""
-  );
+  return serverFirebaseProjectId();
 }
 
 function isProperty(value: unknown): value is Property {

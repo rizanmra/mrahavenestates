@@ -104,6 +104,19 @@ Settings → Authorized domains, include:
 - `mrahavenestates.com`
 - `www.mrahavenestates.com`
 
+### API key restrictions (important for admin inbox)
+
+If the admin portal shows “Incorrect email or password” / empty enquiries while
+Firestore already has `propertyEnquiries` rows, the web API key is almost certainly
+blocked on the **server** (Website/HTTP-referrer restriction).
+
+Quick fix: Google Cloud → Credentials → your key → **Application restrictions → None**
+(keep API restrictions). Save, then refresh `/admin` (no redeploy needed for this).
+
+Better long-term: keep a Website-restricted key as `NEXT_PUBLIC_FIREBASE_API_KEY`,
+and add a second key with Application restrictions **None** as Vercel/server
+`FIREBASE_API_KEY` (Secret, not `NEXT_PUBLIC_`).
+
 ## 3. Domains (Vercel project: mrahavenestates)
 
 Both domains are already attached on Vercel. Do not remove them.

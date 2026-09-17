@@ -49,7 +49,11 @@ export async function POST(request: Request) {
   const user = await lookupFirebaseUser(idToken);
   if (!user) {
     return NextResponse.json(
-      { ok: false, error: "Incorrect email or password." },
+      {
+        ok: false,
+        error:
+          "Could not verify staff Firebase session. If the API key uses Website restrictions, set Application restrictions to None, or add an unrestricted FIREBASE_API_KEY for the server.",
+      },
       { status: 401 },
     );
   }

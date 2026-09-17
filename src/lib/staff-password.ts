@@ -1,7 +1,8 @@
 import { getAdminAuth } from "@/lib/firebase-admin";
+import { serverFirebaseApiKey } from "@/lib/firebase-env";
 
 function firebaseApiKey() {
-  return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
+  return serverFirebaseApiKey();
 }
 
 async function signInWithPassword(email: string, password: string) {

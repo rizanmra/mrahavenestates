@@ -6,6 +6,10 @@ import {
 } from "@/lib/admin-session";
 import { recordClientEnquiryStatusUpdate } from "@/lib/client-enquiry-updates";
 import { getAdminFirestore } from "@/lib/firebase-admin";
+import {
+  serverFirebaseApiKey,
+  serverFirebaseProjectId,
+} from "@/lib/firebase-env";
 import { isReservedStaffEmail } from "@/lib/admin";
 import {
   isPropertyEnquiryRecord,
@@ -28,15 +32,11 @@ export type AssignedAdmin = {
 };
 
 function firebaseApiKey() {
-  return process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
+  return serverFirebaseApiKey();
 }
 
 function firebaseProjectId() {
-  return (
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
-    process.env.FIREBASE_PROJECT_ID?.trim() ||
-    ""
-  );
+  return serverFirebaseProjectId();
 }
 
 export async function lookupFirebaseUser(
