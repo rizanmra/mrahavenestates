@@ -207,7 +207,11 @@ export async function firebaseLogin(
   password: string,
 ): Promise<PortalSession> {
   const auth = getFirebaseAuth();
-  if (!auth) throw new Error("Firebase is not configured.");
+  if (!auth) {
+    throw new Error(
+      "Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* in .env.local (local) or Vercel Environment Variables (live), then restart/redeploy.",
+    );
+  }
 
   try {
     const result = await signInWithEmailAndPassword(
@@ -229,7 +233,11 @@ export async function firebaseRegister(input: {
 }): Promise<PortalSession> {
   const auth = getFirebaseAuth();
   const db = getFirestoreDb();
-  if (!auth || !db) throw new Error("Firebase is not configured.");
+  if (!auth || !db) {
+    throw new Error(
+      "Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* in .env.local (local) or Vercel Environment Variables (live), then restart/redeploy.",
+    );
+  }
 
   if (input.password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
