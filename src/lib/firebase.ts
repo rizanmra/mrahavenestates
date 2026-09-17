@@ -16,17 +16,8 @@ export type FirebasePublicConfig = {
   appId: string;
 };
 
-/** Public web app config for mra-haven-estates-2e26e. Safe to ship in the client. */
-const PROJECT_CONFIG: FirebasePublicConfig = {
-  apiKey: "AIzaSyC1h2j7CCKJ49omnK5oeQsRJ8Nikp-UTdc",
-  authDomain: "mra-haven-estates-2e26e.firebaseapp.com",
-  projectId: "mra-haven-estates-2e26e",
-  storageBucket: "mra-haven-estates-2e26e.firebasestorage.app",
-  messagingSenderId: "112003430709",
-  appId: "1:112003430709:web:9d103d9fd1ec3175f8747c",
-};
-
-function readConfig(): FirebasePublicConfig {
+/** Reads public Firebase web config from env only — never hardcode keys in git. */
+function readConfig(): FirebasePublicConfig | null {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
@@ -35,18 +26,16 @@ function readConfig(): FirebasePublicConfig {
     process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim();
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();
 
-  if (apiKey && authDomain && projectId && appId) {
-    return {
-      apiKey,
-      authDomain,
-      projectId,
-      storageBucket: storageBucket || PROJECT_CONFIG.storageBucket,
-      messagingSenderId: messagingSenderId || PROJECT_CONFIG.messagingSenderId,
-      appId,
-    };
-  }
+  if (!apiKey || !authDomain || !projectId || !appId) return null;
 
-  return PROJECT_CONFIG;
+  return {
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket: storageBucket || `${projectId}.firebasestorage.app`,
+    messagingSenderId: messagingSenderId || "",
+    appId,
+  };
 }
 
 let app: FirebaseApp | null = null;
@@ -54,7 +43,7 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 
 export function isFirebaseConfigured(): boolean {
-  return Boolean(readConfig().apiKey && readConfig().projectId);
+  return readConfig() != null;
 }
 
 export function getFirebaseApp(): FirebaseApp | null {

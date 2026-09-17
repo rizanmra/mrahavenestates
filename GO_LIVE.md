@@ -87,6 +87,9 @@ Project → Settings → Environment Variables → add all from `.env.example`
 
 Redeploy after saving.
 
+Do **not** put Firebase API keys in git. Keep them in `.env.local` (local) and
+Vercel Environment Variables (live) only.
+
 If login works on localhost but not on the live site, Vercel is almost always
 pointing at a different Firebase project (or missing these vars). Local auth
 does **not** read passwords from Firestore — it uses **Firebase Authentication**.
